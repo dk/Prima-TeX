@@ -166,10 +166,16 @@ my %is_uniop = (
 	ddots  => "\N{UP RIGHT DIAGONAL ELLIPSIS}",
 	iddots => "\N{DOWN RIGHT DIAGONAL ELLIPSIS}",
 );
+# Wrap with spaces
+$_ = "\N{THIN SPACE}$_\N{THIN SPACE}" foreach values %is_uniop;
+
+# Continue with https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols
+# for color, see http://tex.stackexchange.com/questions/21598/how-to-color-math-symbols
 
 # TeX macros that get mapped to simple Unicode sequences, and to which
 # formatting is not applied.
 my %is_unisym = (
+	%is_uniop,
 	times => "\N{MULTIPLICATION SIGN}",
 	nabla => "\N{NABLA}",
 	ell => "\N{SCRIPT SMALL L}",
@@ -286,9 +292,6 @@ sub next_chunk {
 		# So we do not need to account for variations in them.
 		
 		# greek symbols, which can be serif, bold etc
-		# backslashed operators and other simple symbols (like \pm)
-		return "\N{THIN SPACE}$is_uniop{$command}\N{THIN SPACE}"
-			if $is_uniop{$command};
 #		if ($is_unichar{$command}) {
 #			my $full_command = "$letter_face $is_unichar{$command}";
 #			return $substitutes{$full_command}
