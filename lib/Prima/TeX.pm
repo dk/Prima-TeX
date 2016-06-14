@@ -254,11 +254,11 @@ my %substitutes = (
 );
 
 sub next_chunk {
-	my (undef, $letter_face, $number_face) = @_;
-	my $char = chop $_[0];
+	my ($widget, undef, $letter_face, $number_face) = @_;
+	my $char = chop $_[1];
 	# ignore spaces
 	return '' if $char =~ /^\s$/;
-	# Roman letters
+	# Roman letters, which use the letter face
 	if ('A' le $char and $char le 'Z' or 'a' le $char and $char le 'z') {
 		my $full_name = "$letter_face CAPITAL $char";
 		$full_name =~ s/CAPITAL/SMALL/ if $char ge 'a';
@@ -270,10 +270,10 @@ sub next_chunk {
 	# slash-commands, like \alpha, \hbar, \frac...
 	if ($char eq '\\') {
 		# handle single-char, symbolic commands
-		my $next = chop $_[0];
+		my $next = chop $_[1];
 		return $is_single_symbol_unisym{$next}
 			if exists $is_single_symbol_unisym{$next};
-		$_[0] .= $next; # didn't find, put back character
+		$_[1] .= $next; # didn't find, put back character
 		
 		# Get the command name. If we can't find it, just return a slash
 		if (not $_[1] =~ s/([a-zA-Z]+)$//) {
@@ -298,11 +298,22 @@ sub next_chunk {
 		# \hbar, \prime, \pm, \alpha, etc
 		                # when command is...              use...
 		return $is_unisym{$command} if $is_unisym{$command};
-		# Special handling, like \frac
-		if (my $next_render_subref = __PACKAGE__->can("render_$command")) {
-			return $next_render_subref;
+		# custom parsing/rendering provided by widget's latex macros
+		if (exists $widget->{latex_macros}
+			and exists $widget->{latex_macros}{$command})
+		{
+			return $widget->{latex_macros}{$command};
+		}
+		# custom parsing/rendering provided by widget method
+		if (my $to_return = $widget->can("render_tex_$command")) {
+			return $to_return;
+		}
+		# custom parsing/rendering provided by this package, like \frac
+		if (my $to_return = __PACKAGE__->can("render_$command")) {
+			return $to_return;
 		}
 		# what could be out here? "\\" ?
+		warn "How did we get here?";
 		return $char;
 	}
 	# Digits
@@ -333,7 +344,7 @@ sub measure_or_draw_TeX {
 	# If no end chunk given, then process only a single chunk.
 	if ($end_chunk eq '') {
 		# Easy: only grab a single chunk
-		my $to_render = next_chunk($_[1], $letter_face, $number_face);
+		my $to_render = next_chunk($widget, $_[1], $letter_face, $number_face);
 		# If the "chunk" was a rendering subref, run it
 		return $to_render->($widget, $_[1], $startx, $starty, $letter_face, $number_face)
 			if ref($to_render);
@@ -363,7 +374,7 @@ sub measure_or_draw_TeX {
 		my $to_render = '';
 		my $next_step = 'render';
 		CHUNK: while (length($_[1]) > 0 and $_[1] !~ /[\_\^\{]$/) {
-			my $next_chunk = next_chunk($_[1], $letter_face, $number_face);
+			my $next_chunk = next_chunk($widget, $_[1], $letter_face, $number_face);
 			# If it's a subref, put that directly into our next step
 			# and break out
 			if (ref($next_chunk)) {
