@@ -40,6 +40,10 @@ my $wDisplay = Prima::MainWindow->create(
 		Prima::TeX::TeX_out($self, '$1 2 3$', 10, 240);
 		Prima::TeX::TeX_out($self, '$\test 1 2 3 \test$', 10, 225);
 		
+		# binary operator spacing
+		Prima::TeX::TeX_out($self, '$a + b$', 10, 205);
+		Prima::TeX::TeX_out($self, '$a \times b$', 10, 190);
+		
 		
 		#Prima::TeX::TeX_out($self, '123 $\alpha_3$ 456', 150, 150);
 		#Prima::TeX::TeX_out($self, '$3 \times 4$', 150, 130);

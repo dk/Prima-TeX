@@ -94,8 +94,10 @@ my %is_single_symbol_unisym = (
 # operators. These will be merged into unisym below, together with a bit
 # of breathing room.
 my %is_uniop = (
+	# Binary operators
 	to => "\N{RIGHTWARDS ARROW}",
 	pm => "\N{PLUS-MINUS SIGN}",
+	times => "\N{MULTIPLICATION SIGN}",
 	
 	# Equalities
 	neq    => "\N{NOT EQUAL TO}",
@@ -133,7 +135,6 @@ my %is_unisym = (
 	%is_uniop,
 	
 	# Operators
-	times => "\N{MULTIPLICATION SIGN}",
 	nabla => "\N{NABLA}",
 	
 	# Functions
