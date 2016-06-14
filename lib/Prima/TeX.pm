@@ -73,6 +73,8 @@ my @name_for_digit = qw(ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE);
 
 # TeX macros that get mapped to characters, and for which formatting
 # like "italic" is applied
+# DEPRECATED: TeX does not let you change the font faces of these letters,
+# so they behave identically to unisym
 my %is_unichar = (
 	alpha => "SMALL alpha",
 	beta => "SMALL beta",
@@ -184,6 +186,45 @@ my %is_unisym = (
 	Im => "\N{BLACK-LETTER CAPITAL I}",
 	imath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS I}",
 	jmath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS J}",
+	# Greek
+	alpha => "\N{MATHEMATICAL ITALIC SMALL alpha}",
+	beta => "\N{MATHEMATICAL ITALIC SMALL beta}",
+	Gamma => "\N{GREEK CAPITAL LETTER Gamma}",
+	gamma => "\N{MATHEMATICAL ITALIC SMALL gamma}",
+	Delta => "\N{GREEK CAPITAL LETTER Delta}",
+	delta => "\N{MATHEMATICAL ITALIC SMALL delta}",
+	epsilon => "\N{MATHEMATICAL ITALIC SMALL epsilon}",
+	zeta => "\N{MATHEMATICAL ITALIC SMALL zeta}",
+	eta => "\N{MATHEMATICAL ITALIC SMALL eta}",
+	Theta => "\N{GREEK CAPITAL LETTER Theta}",
+	theta => "\N{MATHEMATICAL ITALIC SMALL theta}",
+	vartheta => "\N{MATHEMATICAL ITALIC THETA SYMBOL}",
+	iota => "\N{MATHEMATICAL ITALIC SMALL iota}",
+	kappa => "\N{MATHEMATICAL ITALIC SMALL kappa}",
+	Lambda => "\N{GREEK CAPITAL LETTER Lamda}",
+	lambda => "\N{MATHEMATICAL ITALIC SMALL lamda}",
+	mu => "\N{MATHEMATICAL ITALIC SMALL mu}",
+	nu => "\N{MATHEMATICAL ITALIC SMALL nu}",
+	Xi => "\N{GREEK CAPITAL LETTER Xi}",
+	xi => "\N{MATHEMATICAL ITALIC SMALL xi}",
+	Pi => "\N{GREEK CAPITAL LETTER Pi}",
+	pi => "\N{MATHEMATICAL ITALIC SMALL pi}",
+	rho => "\N{MATHEMATICAL ITALIC SMALL rho}",
+	Sigma => "\N{GREEK CAPITAL LETTER Sigma}",
+	sigma => "\N{MATHEMATICAL ITALIC SMALL sigma}",
+	varsigma => "\N{MATHEMATICAL ITALIC SMALL FINAL SIGMA}",
+	tau => "\N{MATHEMATICAL ITALIC SMALL tau}",
+	upsilon => "\N{MATHEMATICAL ITALIC SMALL upsilon}",
+	Phi => "\N{GREEK CAPITAL LETTER Phi}",
+	phi => "\N{MATHEMATICAL ITALIC PHI SYMBOL}",
+	varphi => "\N{MATHEMATICAL ITALIC SMALL PHI}",
+	chi => "\N{MATHEMATICAL ITALIC SMALL chi}",
+	Psi => "\N{GREEK CAPITAL LETTER Psi}",
+	psi => "\N{MATHEMATICAL ITALIC SMALL psi}",
+	Omega => "\N{GREEK CAPITAL LETTER Omega}",
+	omega => "\N{MATHEMATICAL ITALIC SMALL omega}",
+	
+	partial => "\N{MATHEMATICAL ITALIC PARTIAL DIFFERENTIAL}",
 );
 
 # Devise a system to account for gaps in the unicode table. Glyphs that
@@ -202,8 +243,6 @@ my %substitutes = (
 	'MATHEMATICAL SCRIPT CAPITAL L' => "\N{SCRIPT CAPITAL L}",
 	'MATHEMATICAL SCRIPT CAPITAL M' => "\N{SCRIPT CAPITAL M}",
 	'MATHEMATICAL SCRIPT CAPITAL R' => "\N{SCRIPT CAPITAL R}",
-	# partial differential
-	'MATHEMATICAL PARTIAL DIFFERENTIAL' => "\N{partial differential}",
 	# Fraktur
 	'MATHEMATICAL FRAKTUR CAPITAL C' => "\N{BLACK-LETTER CAPITAL C}",
 	'MATHEMATICAL FRAKTUR CAPITAL H' => "\N{BLACK-LETTER CAPITAL H}",
@@ -239,17 +278,22 @@ sub next_chunk {
 		# Get the command name
 		return '\\' unless $_[0] =~ s/([a-zA-Z]+)$//;
 		my $command = reverse $1;
+		
+		# NOTE: in TeX, greek symbols do not respect the local font face!
+		# So we do not need to account for variations in them.
+		
 		# greek symbols, which can be serif, bold etc
-		if ($is_unichar{$command}) {
-			my $full_command = "$letter_face $is_unichar{$command}";
-			return $substitutes{$full_command}
-				if exists $substitutes{$full_command};
-			return eval "\"\\N{$full_command}\"";
-		}
 		# backslashed operators and other simple symbols (like \pm)
 		return "\N{THIN SPACE}$is_uniop{$command}\N{THIN SPACE}"
 			if $is_uniop{$command};
-		# \hbar, \prime, etc
+#		if ($is_unichar{$command}) {
+#			my $full_command = "$letter_face $is_unichar{$command}";
+#			return $substitutes{$full_command}
+#				if exists $substitutes{$full_command};
+#			return eval "\"\\N{$full_command}\"";
+#		}
+		# \hbar, \prime, \pm, \alpha, etc
+		                # when command is...              use...
 		return $is_unisym{$command} if $is_unisym{$command};
 		# Special handling, like \frac
 		if (my $next_render_subref = __PACKAGE__->can("render_$command")) {
