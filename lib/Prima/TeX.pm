@@ -132,7 +132,7 @@ my %special_formatting = (
 my %is_single_symbol_unisym = (
 	',' => "\N{HAIR SPACE}",
 	':' => "\N{THIN SPACE}",
-	':' => ' ',
+	';' => ' ',
 );
 
 # TeX macros that correspond to simple Unicode sequences, and which are
