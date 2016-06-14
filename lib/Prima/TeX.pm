@@ -275,8 +275,11 @@ sub next_chunk {
 			if exists $is_single_symbol_unisym{$next};
 		$_[0] .= $next; # didn't find, put back character
 		
-		# Get the command name
-		return '\\' unless $_[0] =~ s/([a-zA-Z]+)$//;
+		# Get the command name. If we can't find it, just return a slash
+		if (not $_[1] =~ s/([a-zA-Z]+)$//) {
+			warn "Found stray backslash around ", reverse(substr($_[1], -5));
+			return '\\';
+		}
 		my $command = reverse $1;
 		
 		# NOTE: in TeX, greek symbols do not respect the local font face!
