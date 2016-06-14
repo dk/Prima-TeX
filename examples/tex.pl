@@ -53,6 +53,14 @@ my $wDisplay = Prima::MainWindow->create(
 		Prima::TeX::TeX_out($self, '$\mathcal{A} \to \mathcal{B}$', 300, 270);
 		Prima::TeX::TeX_out($self, '$\mathfrak{C} \to \mathfrak{D}$', 300, 255);
 		Prima::TeX::TeX_out($self, '$\Im \left\{ 1 + e^{\imath \, \theta} \right\}$', 300, 240);
+		# Summation
+		$self->text_out("\x{23B2}", 300, 220);
+		$self->text_out("\x{23B3}", 300, 205);
+		# Parenthesis
+		$self->text_out("\x{239B}", 325, 220);
+		$self->text_out("\x{239D}", 325, 205);
+		Prima::TeX::TeX_out($self, '$2 \nless 1, 1 \leq 2, 4 ~ 5\cdots, a \propto b$', 335, 212);
+		
 	},
 );
 

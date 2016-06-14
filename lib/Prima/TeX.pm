@@ -122,6 +122,7 @@ my %special_formatting = (
 	',' => ",\N{THIN SPACE}",
 	'<' => "\N{THIN SPACE}<\N{THIN SPACE}",
 	'>' => "\N{THIN SPACE}>\N{THIN SPACE}",
+	'~' => "\N{THIN SPACE}\N{TILDE OPERATOR}\N{THIN SPACE}",
 );
 
 # TeX symbolic macros (like \: as opposed to \sin) that get mapped to
@@ -132,17 +133,45 @@ my %is_single_symbol_unisym = (
 	':' => ' ',
 );
 
+# TeX macros that correspond to simple Unicode sequences, and which are
+# operators. As opposed to unisym, these get a bit of breathing room.
+my %is_uniop = (
+	to => "\N{RIGHTWARDS ARROW}",
+	pm => "\N{PLUS-MINUS SIGN}",
+	
+	# Equalities
+	neq    => "\N{NOT EQUAL TO}",
+	ne     => "\N{NOT EQUAL TO}",
+	equiv  => "\N{IDENTICAL TO}",
+	approx => "\N{ALMOST EQUAL TO}",
+	cong   => "\N{APPROXIMATELY EQUAL TO}",
+	simeq  => "\N{ASYMPTOTICALLY EQUAL TO}",
+	propto => "\N{PROPORTIONAL TO}",
+	
+	# Comparisons
+	lt     => "<",
+	nless  => "\N{NOT LESS-THAN}",
+	leq    => "\N{LESS-THAN OR EQUAL TO}",
+	gt     => ">",
+	ngtr   => "\N{NOT GREATER-THAN}",
+	geq    => "\N{GREATER-THAN OR EQUAL TO}",
+	
+	# Dots
+	dots   => "\N{HORIZONTAL ELLIPSIS}",
+	ldots  => "\N{HORIZONTAL ELLIPSIS}",
+	cdots  => "\N{MIDLINE HORIZONTAL ELLIPSIS}",
+	vdots  => "\N{VERTICAL ELLIPSIS}",
+	ddots  => "\N{UP RIGHT DIAGONAL ELLIPSIS}",
+	iddots => "\N{DOWN RIGHT DIAGONAL ELLIPSIS}",
+);
+
 # TeX macros that get mapped to simple Unicode sequences, and to which
 # formatting is not applied.
 my %is_unisym = (
-	to => "\N{THIN SPACE}\N{RIGHTWARDS ARROW}\N{THIN SPACE}",
 	times => "\N{MULTIPLICATION SIGN}",
-	gt => "\N{THIN SPACE}>\N{THIN SPACE}",
-	lt => "\N{THIN SPACE}<\N{THIN SPACE}",
 	nabla => "\N{NABLA}",
 	ell => "\N{SCRIPT SMALL L}",
 	hbar => "\N{PLANCK CONSTANT OVER TWO PI}",
-	pm => "\N{THIN SPACE}\N{PLUS-MINUS SIGN}\N{THIN SPACE}",
 	sin => "sin",
 	cos => "cos",
 	tan => "tan",
@@ -197,7 +226,7 @@ sub next_chunk {
 		return $substitutes{$full_name} if exists $substitutes{$full_name};
 		return eval "\"\\N{$full_name}\"";
 	}
-	# things with special formatting (like spaces)
+	# single ASCII characters with special formatting (like spaces)
 	return $special_formatting{$char} if $special_formatting{$char};
 	# slash-commands, like \alpha, \hbar, \frac...
 	if ($char eq '\\') {
@@ -217,6 +246,9 @@ sub next_chunk {
 				if exists $substitutes{$full_command};
 			return eval "\"\\N{$full_command}\"";
 		}
+		# backslashed operators and other simple symbols (like \pm)
+		return "\N{THIN SPACE}$is_uniop{$command}\N{THIN SPACE}"
+			if $is_uniop{$command};
 		# \hbar, \prime, etc
 		return $is_unisym{$command} if $is_unisym{$command};
 		# Special handling, like \frac
@@ -376,6 +408,9 @@ sub measure_or_draw_TeX {
 	return $length;
 }
 
+###########
+# Bracing #
+###########
 my %is_brace = (
 	'.' => '',
 	'(' => '(',
@@ -772,5 +807,50 @@ fact, I could create an Alien package for FreeSerif and simply rely on
 that package for TeX typesetting. For now, I will simply rely on full
 unicode support (i.e. FreeSerif) and add other capabilities, such as
 changing the font style, if I decide it's worth doing.
+
+=head2 Recognized Macros
+
+Prima::TeX recognizes macros for:
+
+=over
+
+=item Greek
+
+All Greek letters are recognized and rendered using Unicode.
+
+=item Mathematical Comparsions
+
+The mathematical comparisons, including C<\le>, C<\neq>, C<\equiv>, etc.
+
+
+=back
+
+the Greek letters. It also recognizes
+
+ \times    multiplication symbol
+
+ \gt, \lt  greater and less than symbols
+ \ge, \le  
+ lt, gt, 
+	to => "\N{THIN SPACE}\N{RIGHTWARDS ARROW}\N{THIN SPACE}",
+	times => "\N{MULTIPLICATION SIGN}",
+	gt => "\N{THIN SPACE}>\N{THIN SPACE}",
+	lt => "\N{THIN SPACE}<\N{THIN SPACE}",
+	nabla => "\N{NABLA}",
+	ell => "\N{SCRIPT SMALL L}",
+	hbar => "\N{PLANCK CONSTANT OVER TWO PI}",
+	pm => "\N{THIN SPACE}\N{PLUS-MINUS SIGN}\N{THIN SPACE}",
+	sin => "sin",
+	cos => "cos",
+	tan => "tan",
+	infty => "\N{INFINITY}",
+	sum => "\N{N-ARY SUMMATION}",
+	int => "\N{INTEGRAL}",
+	quad => "\N{EN QUAD}",
+	qquad => "\N{EM QUAD}",
+	Re => "\N{BLACK-LETTER CAPITAL R}",
+	Im => "\N{BLACK-LETTER CAPITAL I}",
+	imath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS I}",
+	jmath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS J}",
 
 =cut
