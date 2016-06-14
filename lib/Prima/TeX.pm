@@ -258,13 +258,13 @@ sub next_chunk {
 		# So we do not need to account for variations in them.
 		
 		# \hbar, \prime, \pm, \alpha, etc
-		                # when command is...              use...
 		return $is_unisym{$command} if $is_unisym{$command};
-		# custom parsing/rendering provided by widget's latex macros
-		if (exists $widget->{latex_macros}
-			and exists $widget->{latex_macros}{$command})
+		
+		# custom parsing/rendering provided by widget's tex macros
+		if (exists $widget->{tex_macros}
+			and exists $widget->{tex_macros}{$command})
 		{
-			return $widget->{latex_macros}{$command};
+			return $widget->{tex_macros}{$command};
 		}
 		# custom parsing/rendering provided by widget method
 		if (my $to_return = $widget->can("render_tex_$command")) {
