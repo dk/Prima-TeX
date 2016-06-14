@@ -71,51 +71,6 @@ sub TeX_out {
 use charnames qw(:loose);
 my @name_for_digit = qw(ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE);
 
-# TeX macros that get mapped to characters, and for which formatting
-# like "italic" is applied
-# DEPRECATED: TeX does not let you change the font faces of these letters,
-# so they behave identically to unisym
-my %is_unichar = (
-	alpha => "SMALL alpha",
-	beta => "SMALL beta",
-	Gamma => "CAPITAL Gamma",
-	gamma => "SMALL gamma",
-	Delta => "CAPITAL Delta",
-	delta => "SMALL delta",
-	epsilon => "SMALL epsilon",
-	zeta => "SMALL zeta",
-	eta => "SMALL eta",
-	Theta => "CAPITAL Theta",
-	theta => "SMALL theta",
-	vartheta => "THETA SYMBOL",
-	iota => "SMALL iota",
-	kappa => "SMALL kappa",
-	Lambda => "CAPITAL Lambda",
-	lambda => "SMALL lambda",
-	mu => "SMALL mu",
-	nu => "SMALL nu",
-	Xi => "CAPITAL Xi",
-	xi => "SMALL xi",
-	Pi => "CAPITAL Pi",
-	pi => "SMALL pi",
-	rho => "SMALL rho",
-	Sigma => "CAPITAL Sigma",
-	sigma => "SMALL sigma",
-	varsigma => "SMALL FINAL SIGMA",
-	tau => "SMALL tau",
-	upsilon => "SMALL upsilon",
-	Phi => "CAPITAL Phi",
-	phi => "PHI SYMBOL",
-	varphi => "SMALL PHI",
-	chi => "SMALL chi",
-	Psi => "CAPITAL Psi",
-	psi => "SMALL psi",
-	Omega => "CAPITAL Omega",
-	omega => "SMALL omega",
-	
-	partial => "PARTIAL DIFFERENTIAL",
-);
-
 # Ascii characters that get special treatment
 my %special_formatting = (
 	'+' => "\N{THIN SPACE}+\N{THIN SPACE}",
@@ -136,7 +91,8 @@ my %is_single_symbol_unisym = (
 );
 
 # TeX macros that correspond to simple Unicode sequences, and which are
-# operators. As opposed to unisym, these get a bit of breathing room.
+# operators. These will be merged into unisym below, together with a bit
+# of breathing room.
 my %is_uniop = (
 	to => "\N{RIGHTWARDS ARROW}",
 	pm => "\N{PLUS-MINUS SIGN}",
@@ -172,26 +128,36 @@ $_ = "\N{THIN SPACE}$_\N{THIN SPACE}" foreach values %is_uniop;
 # Continue with https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols
 # for color, see http://tex.stackexchange.com/questions/21598/how-to-color-math-symbols
 
-# TeX macros that get mapped to simple Unicode sequences, and to which
-# formatting is not applied.
+# TeX macros that get mapped to simple Unicode sequences
 my %is_unisym = (
 	%is_uniop,
+	
+	# Operators
 	times => "\N{MULTIPLICATION SIGN}",
 	nabla => "\N{NABLA}",
-	ell => "\N{SCRIPT SMALL L}",
-	hbar => "\N{PLANCK CONSTANT OVER TWO PI}",
+	
+	# Functions
 	sin => "sin",
 	cos => "cos",
 	tan => "tan",
-	infty => "\N{INFINITY}",
+	
+	# Big things
 	sum => "\N{N-ARY SUMMATION}",
 	int => "\N{INTEGRAL}",
+	
+	# spacing
 	quad => "\N{EN QUAD}",
 	qquad => "\N{EM QUAD}",
+	
+	# Special characters
 	Re => "\N{BLACK-LETTER CAPITAL R}",
 	Im => "\N{BLACK-LETTER CAPITAL I}",
 	imath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS I}",
 	jmath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS J}",
+	ell => "\N{SCRIPT SMALL L}",
+	hbar => "\N{PLANCK CONSTANT OVER TWO PI}",
+	infty => "\N{INFINITY}",
+	
 	# Greek
 	alpha => "\N{MATHEMATICAL ITALIC SMALL alpha}",
 	beta => "\N{MATHEMATICAL ITALIC SMALL beta}",
@@ -291,13 +257,6 @@ sub next_chunk {
 		# NOTE: in TeX, greek symbols do not respect the local font face!
 		# So we do not need to account for variations in them.
 		
-		# greek symbols, which can be serif, bold etc
-#		if ($is_unichar{$command}) {
-#			my $full_command = "$letter_face $is_unichar{$command}";
-#			return $substitutes{$full_command}
-#				if exists $substitutes{$full_command};
-#			return eval "\"\\N{$full_command}\"";
-#		}
 		# \hbar, \prime, \pm, \alpha, etc
 		                # when command is...              use...
 		return $is_unisym{$command} if $is_unisym{$command};
@@ -356,6 +315,9 @@ sub measure_or_draw_TeX {
 		return $widget->get_text_width($to_render);
 	}
 	
+	# We need to increment lengths all over the place, but the quantities
+	# that need to be updated depend on whether we're rendering or just
+	# measuring. So, we wrap all of that into subrefs.
 	my $increment_lengths = defined $startx
 		? sub {
 			my $dx = shift;
@@ -365,6 +327,7 @@ sub measure_or_draw_TeX {
 		}
 		: sub { $length += shift };
 	
+	# Needed for adding a bit of room for subscripts and superscripts
 	my $hair_space = $widget->get_text_width("\N{HAIR SPACE}");
 	
 	my %is_special = map { $_ => 1 } qw(_ ^ { );
