@@ -35,7 +35,10 @@ my $wDisplay = Prima::MainWindow->create(
 		Prima::TeX::TeX_out($self, '$N \to \infty$', 10, 295);
 		Prima::TeX::TeX_out($self, '$\sum_{i=1}^{100} x_i$', 10, 280);
 		Prima::TeX::TeX_out($self, '$\int_{x=0}^{1} x^2 \, dx$', 10, 265);
-
+		
+		# Custom macros
+		Prima::TeX::TeX_out($self, '$1 2 3$', 10, 240);
+		Prima::TeX::TeX_out($self, '$\test 1 2 3 \test$', 10, 225);
 		
 		
 		#Prima::TeX::TeX_out($self, '123 $\alpha_3$ 456', 150, 150);
@@ -67,5 +70,13 @@ my $wDisplay = Prima::MainWindow->create(
 		
 	},
 );
+
+# Add a custom macro, for the fun of it!
+$wDisplay->{tex_macros} = {
+	test => sub {
+		print "Test!\n";
+		return 0;
+	},
+};
 
 run Prima;
