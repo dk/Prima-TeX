@@ -27,7 +27,7 @@ my $wDisplay = Prima::MainWindow->create(
 #		$self->font->size(20);
 #		Prima::TeX::TeX_out($self, '$10^f_f$ $N^f_f$', 50, 400);
 		
-		Prima::TeX::TeX_out($self, '$\sigma_\ell + 5$', 10, 370);
+		Prima::TeX::TeX_out($self, '$\sigma_\ell + 5 + \Omega$', 10, 370);
 		Prima::TeX::TeX_out($self, '$\sigma_{\ell} + 5$', 10, 355);
 		Prima::TeX::TeX_out($self, '$N^{a + b+c}$', 10, 340);
 		Prima::TeX::TeX_out($self, '$\sin(\theta)$', 10, 325);
@@ -53,12 +53,16 @@ my $wDisplay = Prima::MainWindow->create(
 		Prima::TeX::TeX_out($self, '$\mathcal{A} \to \mathcal{B}$', 300, 270);
 		Prima::TeX::TeX_out($self, '$\mathfrak{C} \to \mathfrak{D}$', 300, 255);
 		Prima::TeX::TeX_out($self, '$\Im \left\{ 1 + e^{\imath \, \theta} \right\}$', 300, 240);
-		# Summation
+		
+		# Explicit code points for ...
+		# Big Summation
 		$self->text_out("\x{23B2}", 300, 220);
 		$self->text_out("\x{23B3}", 300, 205);
-		# Parenthesis
+		# Big Parenthesis
 		$self->text_out("\x{239B}", 325, 220);
 		$self->text_out("\x{239D}", 325, 205);
+		
+		# And back to our regular broadcast
 		Prima::TeX::TeX_out($self, '$2 \nless 1, 1 \leq 2, 4 ~ 5\cdots, a \propto b$', 335, 212);
 		
 	},
