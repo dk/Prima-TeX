@@ -558,7 +558,7 @@ sub render_frac {
 	
 	# Reduce the font size
 	my $original_font_size = $widget->font->size;
-	$widget->font->size($original_font_size * 2 / 3);
+	$widget->font->size($original_font_size * 0.6);
 	
 	# Compute the widths of the numerator and denominator.
 	my $backup_to_render = $_[1];
@@ -581,7 +581,7 @@ sub render_frac {
 		measure_or_draw_TeX($widget, $backup_to_render, '', $x, $y);
 		
 		# Render the denominator.
-		$vert_offset = -0.13 * $line_height;
+		$vert_offset = -0.05 * $line_height;
 		$x = $startx - $vert_offset * sin($angle);
 		$y = $starty + $vert_offset * cos($angle);
 		if ($lower_length < $upper_length) {
