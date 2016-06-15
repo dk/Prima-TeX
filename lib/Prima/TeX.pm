@@ -129,6 +129,7 @@ $_ = "\N{THIN SPACE}$_\N{THIN SPACE}" foreach values %is_uniop;
 
 # Continue with https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols
 # for color, see http://tex.stackexchange.com/questions/21598/how-to-color-math-symbols
+# for spacing: https://www.sharelatex.com/learn/Spacing_in_math_mode
 
 # TeX macros that get mapped to simple Unicode sequences
 my %is_unisym = (
@@ -488,52 +489,52 @@ sub render_left {
 sub render_mathrm {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'', $number_face);
+		'', '');
 }
 sub render_mathbf {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL BOLD', $number_face);
+		'MATHEMATICAL BOLD', 'MATHEMATICAL BOLD');
 }
 sub render_boldsymbol {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL BOLD ITALIC', $number_face);
+		'MATHEMATICAL BOLD ITALIC', 'MATHEMATICAL BOLD');
 }
 sub render_mathsf {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL SANS-SERIF', $number_face);
+		'MATHEMATICAL SANS-SERIF', 'MATHEMATICAL SANS-SERIF');
 }
 sub render_mathit {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL ITALIC', $number_face);
+		'MATHEMATICAL ITALIC', 'MATHEMATICAL ITALIC');
 }
 sub render_mathtt {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL MONOSPACE', $number_face);
+		'MATHEMATICAL MONOSPACE', 'MATHEMATICAL MONOSPACE');
 }
 sub render_mathbb {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL DOUBLE-STRUCK', $number_face);
+		'MATHEMATICAL DOUBLE-STRUCK', 'MATHEMATICAL DOUBLE-STRUCK');
 }
 sub render_mathfrak {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL FRAKTUR', $number_face);
+		'MATHEMATICAL FRAKTUR', 'MATHEMATICAL FRAKTUR');
 }
 sub render_mathcal {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL SCRIPT', $number_face);
+		'MATHEMATICAL SCRIPT', 'MATHEMATICAL SCRIPT');
 }
 sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
-		'MATHEMATICAL SCRIPT', $number_face);
+		'MATHEMATICAL SCRIPT', 'MATHEMATICAL SCRIPT');
 }
 
 
@@ -877,5 +878,12 @@ the Greek letters. It also recognizes
 	Im => "\N{BLACK-LETTER CAPITAL I}",
 	imath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS I}",
 	jmath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS J}",
+
+=head2 Minor Extensions
+
+In TeX, C<mathbb>, C<mathcal>, and C<mathscr> produce nonsensical output
+for lower-cased letters and for numbers. These have perfectly sensible
+renderings with unicode, so they are allowed and produce the output you
+would have expected.
 
 =cut
