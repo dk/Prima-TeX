@@ -80,6 +80,7 @@ my %special_formatting = (
 	'<' => "\N{THIN SPACE}<\N{THIN SPACE}",
 	'>' => "\N{THIN SPACE}>\N{THIN SPACE}",
 	'~' => "\N{THIN SPACE}\N{TILDE OPERATOR}\N{THIN SPACE}",
+	'=' => "\N{THIN SPACE}=\N{THIN SPACE}",
 );
 
 # TeX symbolic macros (like \: as opposed to \sin) that get mapped to
