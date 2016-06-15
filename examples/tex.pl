@@ -71,6 +71,8 @@ my $wDisplay = Prima::MainWindow->create(
 		
 		# And back to our regular broadcast
 		Prima::TeX::TeX_out($self, '$2 \nless 1, 1 \leq 2, 4 ~ 5\cdots, a \propto b$', 335, 212);
+		Prima::TeX::TeX_out($self, '$2 + A^a_1 \frac{abc}{123}$', 335, 190);
+		Prima::TeX::TeX_out($self, '$2 + A^a_1 \frac{\pi}{4}$', 335, 175);
 		
 	},
 );

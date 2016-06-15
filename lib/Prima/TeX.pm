@@ -256,9 +256,6 @@ sub next_chunk {
 		}
 		my $command = reverse $1;
 		
-		# NOTE: in TeX, greek symbols do not respect the local font face!
-		# So we do not need to account for variations in them.
-		
 		# \hbar, \prime, \pm, \alpha, etc
 		return $is_unisym{$command} if $is_unisym{$command};
 		
@@ -276,7 +273,7 @@ sub next_chunk {
 		if (my $to_return = __PACKAGE__->can("render_$command")) {
 			return $to_return;
 		}
-		# what could be out here? "\\" ?
+		# what could be out here?
 		warn "How did we get here?";
 		return $char;
 	}
@@ -537,6 +534,75 @@ sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
 		'MATHEMATICAL SCRIPT', 'MATHEMATICAL SCRIPT');
 }
 
+#############
+# Fractions #
+#############
+
+sub render_frac {
+	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
+	my $angle = $widget->font->direction * $deg_to_rad;
+	
+	# Add a little bit of breathing room
+	my $small_space = $widget->get_text_width("\N{THIN SPACE}");
+	my $line_height = $widget->font->height;
+	
+	# If we are actually rendering, then update startx and starty, too
+	if (defined $startx) {
+		$startx += cos($angle) * $small_space;
+		$starty += sin($angle) * $small_space;
+	}
+	
+	# Strip leading whitespace
+	$_[1] =~ s/\s+$//;
+	
+	# Reduce the font size
+	my $original_font_size = $widget->font->size;
+	$widget->font->size($original_font_size * 2 / 3);
+	
+	# Compute the widths of the numerator and denominator.
+	my $backup_to_render = $_[1];
+	my $bigger_length = my $upper_length
+		= measure_or_draw_TeX($widget, $_[1], '');
+	my $lower_length = measure_or_draw_TeX($widget, $_[1], '');
+	$bigger_length = $lower_length if $bigger_length < $lower_length;
+	
+	# Rendering?
+	if (defined $startx) {
+		# Render the numerator.
+		my $vert_offset = 0.5 * $line_height;
+		my $x = $startx - $vert_offset * sin($angle);
+		my $y = $starty + $vert_offset * cos($angle);
+		if ($upper_length < $lower_length) {
+			my $dx = ($lower_length - $upper_length) / 2;
+			$x += cos($angle) * $dx;
+			$y += sin($angle) * $dx;
+		}
+		measure_or_draw_TeX($widget, $backup_to_render, '', $x, $y);
+		
+		# Render the denominator.
+		$vert_offset = -0.13 * $line_height;
+		$x = $startx - $vert_offset * sin($angle);
+		$y = $starty + $vert_offset * cos($angle);
+		if ($lower_length < $upper_length) {
+			my $dx = ($upper_length - $lower_length) / 2;
+			$x -= cos($angle) * $dx;
+			$y -= sin($angle) * $dx;
+		}
+		measure_or_draw_TeX($widget, $backup_to_render, '', $x, $y);
+		
+		# Finish with the horizontal line
+		$vert_offset = 0.5 * $line_height;
+		$x = $startx - $vert_offset * sin($angle);
+		$y = $starty + $vert_offset * cos($angle);
+		my $x2 = $x + cos($angle) * $bigger_length;
+		my $y2 = $y + sin($angle) * $bigger_length;
+		$widget->line($x, $y, $x2, $y2);
+	}
+	
+	# Reset the font size and return the final computed length
+	$widget->font->size($original_font_size);
+	return $small_space * 2 + $bigger_length;
+}
 
 1;
 __END__
