@@ -542,16 +542,7 @@ sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
 sub render_frac {
 	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
 	my $angle = $widget->font->direction * $deg_to_rad;
-	
-	# Add a little bit of breathing room
-	my $small_space = $widget->get_text_width("\N{THIN SPACE}");
 	my $line_height = $widget->font->height;
-	
-	# If we are actually rendering, then update startx and starty, too
-	if (defined $startx) {
-		$startx += cos($angle) * $small_space;
-		$starty += sin($angle) * $small_space;
-	}
 	
 	# Strip leading whitespace
 	$_[1] =~ s/\s+$//;
@@ -602,7 +593,7 @@ sub render_frac {
 	
 	# Reset the font size and return the final computed length
 	$widget->font->size($original_font_size);
-	return $small_space * 2 + $bigger_length;
+	return $bigger_length;
 }
 
 1;
