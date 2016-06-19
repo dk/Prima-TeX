@@ -74,6 +74,15 @@ my $wDisplay = Prima::MainWindow->create(
 		Prima::TeX::TeX_out($self, '$2 + A^a_1 \frac{fabc}{123}$', 335, 190);
 		Prima::TeX::TeX_out($self, '$2 + A^a_1 \frac{\pi}{4}$', 335, 175);
 		
+		$self->text_out("\x{221a}", 325, 150);
+		$self->line(325 + $self->get_text_width("\x{221a}") - 1, 150 + $self->font->height, 350, 150 + $self->font->height);
+		
+		$self->text_out("\x{20d7}", 325, 100);
+		$self->text_out("a", 325, 100);
+		$self->text_out("x\x{20d7} + y\x{20d7} = z\x{20d7}", 325, 85);
+		
+		Prima::TeX::TeX_out($self, '$\vec{x} + \vec{y} = \vec{z}$', 325, 70);
+
 	},
 );
 

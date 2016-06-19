@@ -535,6 +535,30 @@ sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
 		'MATHEMATICAL SCRIPT', 'MATHEMATICAL SCRIPT');
 }
 
+##############
+# Decorators #
+##############
+
+# Get next chunk, and append with U+20D7, combining right arrow above
+sub render_vec {
+	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
+	
+	# Render/measure the next chunk
+	my $length = measure_or_draw_TeX($widget, $_[1], '', $startx, $starty);
+	
+	# If we're drawing, then advance x and y, and draw the vector arrow
+	if (defined $startx) {
+		my $hair_space = $widget->get_text_width("\N{HAIR SPACE}");
+		my $angle = $widget->font->direction * $deg_to_rad;
+		$startx += cos($angle) * ($length + $hair_space);
+		$starty += sin($angle) * ($length + $hair_space);
+		$widget->text_out("\N{COMBINING RIGHT ARROW ABOVE}", $startx, $starty);
+	}
+	
+	# return chunk's length
+	return $length;
+}
+
 #############
 # Fractions #
 #############
@@ -595,6 +619,16 @@ sub render_frac {
 	$widget->font->size($original_font_size);
 	return $bigger_length;
 }
+
+sub render_nicefrac {
+	die "Working here\n";
+	# use DIVISION SLASH U+2215 or 
+	# BIG SOLIDUS U+29f8
+	# or FRACTION SLASH U+2044
+}
+# For square root, consider HORIZONTAL SCAN LINE 1, U+23ba
+# square root is U+221a
+# Also, use get_text_box to get the upper right corner of the square-root
 
 1;
 __END__
