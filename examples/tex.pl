@@ -82,7 +82,11 @@ my $wDisplay = Prima::MainWindow->create(
 		$self->text_out("x\x{20d7} + y\x{20d7} = z\x{20d7}", 325, 85);
 		
 		Prima::TeX::TeX_out($self, '$\vec{x} + \vec{y} = \vec{z}$', 325, 70);
-
+		Prima::TeX::TeX_out($self, '$m\ddot{x} = -k x + A \dot{v}$', 325, 55);
+		Prima::TeX::TeX_out($self, '$m\vec{\ddot{A}} = -k \vec{A}$', 325, 40);
+		Prima::TeX::TeX_out($self, '$\ddot{A} \ddot{N} \ddot{AN} \dot{A} \dot{N} \dot{AN}$', 325, 25);
+		
+		Prima::TeX::TeX_out($self, '$\tilde{f} \tilde{G} \hat{a} \hat G \bar a \bar{G}$' . " f\x{303} a\x{305}", 325, 10);
 	},
 );
 

@@ -539,25 +539,52 @@ sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
 # Decorators #
 ##############
 
-# Get next chunk, and append with U+20D7, combining right arrow above
-sub render_vec {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
+sub _render_decorator {
+	my ($widget, undef, $startx, $starty, $letter_face, $number_face, $decorator) = @_;
 	
 	# Render/measure the next chunk
 	my $length = measure_or_draw_TeX($widget, $_[1], '', $startx, $starty);
 	
 	# If we're drawing, then advance x and y, and draw the vector arrow
 	if (defined $startx) {
-		my $hair_space = $widget->get_text_width("\N{HAIR SPACE}");
+#		my $hair_space = $widget->get_text_width("\N{HAIR SPACE}");
 		my $angle = $widget->font->direction * $deg_to_rad;
-		$startx += cos($angle) * ($length + $hair_space);
-		$starty += sin($angle) * ($length + $hair_space);
-		$widget->text_out("\N{COMBINING RIGHT ARROW ABOVE}", $startx, $starty);
+#		$startx += cos($angle) * ($length + $hair_space);
+#		$starty += sin($angle) * ($length + $hair_space);
+		$startx += cos($angle) * $length;
+		$starty += sin($angle) * $length;
+		$widget->text_out($decorator, $startx, $starty);
 	}
 	
 	# return chunk's length
 	return $length;
 }
+
+# Get next chunk, and append with U+20D7, combining right arrow above
+sub render_vec {
+	return _render_decorator(@_, "\N{HAIR SPACE}\N{COMBINING RIGHT ARROW ABOVE}");
+}
+
+sub render_ddot {
+	return _render_decorator(@_, "\N{COMBINING DIAERESIS}");
+}
+
+sub render_dot {
+	return _render_decorator(@_, "\N{COMBINING DOT ABOVE}");
+}
+
+sub render_hat {
+	return _render_decorator(@_, "\N{COMBINING CIRCUMFLEX ACCENT}");
+}
+
+sub render_tilde {
+	return _render_decorator(@_, "\N{COMBINING TILDE}");
+}
+
+sub render_bar {
+	return _render_decorator(@_, "\N{COMBINING MACRON}");
+}
+
 
 #############
 # Fractions #
