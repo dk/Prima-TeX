@@ -44,6 +44,10 @@ my $wDisplay = Prima::MainWindow->create(
 		Prima::TeX::TeX_out($self, '$a + b$', 10, 205);
 		Prima::TeX::TeX_out($self, '$a \times b$', 10, 190);
 		
+		# Failed parse
+		Prima::TeX::TeX_out($self, '$\int_{x=0}^{1} x^2 \, dx', 10, 160);
+		Prima::TeX::TeX_out($self, '$\unkown{x}$', 10, 145);
+		
 		
 		#Prima::TeX::TeX_out($self, '123 $\alpha_3$ 456', 150, 150);
 		#Prima::TeX::TeX_out($self, '$3 \times 4$', 150, 130);

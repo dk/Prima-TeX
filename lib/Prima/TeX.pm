@@ -275,8 +275,7 @@ sub next_chunk {
 			return $to_return;
 		}
 		# what could be out here?
-		warn "How did we get here?";
-		return $char;
+		return "$char$command";
 	}
 	# Digits
 	return eval "\"\\N{$number_face DIGIT $name_for_digit[$char]}\""
@@ -335,7 +334,9 @@ sub measure_or_draw_TeX {
 	$end_chunk = quotemeta $end_chunk;
 	
 	# Parse until we find the end chunk
-	CONTIGUOUS: while (length > 0 and not s/$end_chunk$//) {
+	my $prev_length = 1 + length;
+	CONTIGUOUS: while (length > 0 and $prev_length > length and not s/$end_chunk$//) {
+		$prev_length = length;
 		# Pull out stuff to render directly
 		my $to_render = '';
 		my $next_step = 'render';
