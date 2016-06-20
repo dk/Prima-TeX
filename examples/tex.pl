@@ -86,7 +86,7 @@ my $wDisplay = Prima::MainWindow->create(
 		Prima::TeX::TeX_out($self, '$m\vec{\ddot{A}} = -k \vec{A}$', 325, 40);
 		Prima::TeX::TeX_out($self, '$\ddot{A} \ddot{N} \ddot{AN} \dot{A} \dot{N} \dot{AN}$', 325, 25);
 		
-		Prima::TeX::TeX_out($self, '$\tilde{f} \tilde{G} \hat{a} \hat G \bar a \bar{G}$' . " f\x{303} a\x{305}", 325, 10);
+		Prima::TeX::TeX_out($self, '$\ddot\theta \tilde{f} \tilde{G} \hat{a} \hat G \bar a \bar{G}$' . " f\x{303} a\x{305}", 325, 10);
 	},
 );
 
