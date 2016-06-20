@@ -34,8 +34,8 @@ sub TeX_out {
 	while (length ($text) > 0) {
 		# If it starts with something that looks like tex...
 		if ($text =~ s/^\$([^\$]*\$)//) {
-			my $reverse_tex = reverse($1);
-			my $dx = measure_or_draw_TeX($widget, $reverse_tex, '$', $startx, $starty);
+			local $_ = reverse($1);
+			my $dx = measure_or_draw_TeX($widget, '$', $startx, $starty);
 			$length += $dx;
 			if ($is_drawing) {
 				$startx += cos($angle) * $dx;
@@ -229,8 +229,8 @@ my %substitutes = (
 );
 
 sub next_chunk {
-	my ($widget, undef, $letter_face, $number_face) = @_;
-	my $char = chop $_[1];
+	my ($widget, $letter_face, $number_face) = @_;
+	my $char = chop;
 	# ignore spaces
 	return '' if $char =~ /^\s$/;
 	# Roman letters, which use the letter face
@@ -245,14 +245,14 @@ sub next_chunk {
 	# slash-commands, like \alpha, \hbar, \frac...
 	if ($char eq '\\') {
 		# handle single-char, symbolic commands
-		my $next = chop $_[1];
+		my $next = chop;
 		return $is_single_symbol_unisym{$next}
 			if exists $is_single_symbol_unisym{$next};
-		$_[1] .= $next; # didn't find, put back character
+		$_ .= $next; # didn't find, put back character
 		
 		# Get the command name. If we can't find it, just return a slash
-		if (not $_[1] =~ s/([a-zA-Z]+)$//) {
-			warn "Found stray backslash around ", reverse(substr($_[1], -5));
+		if (not s/([a-zA-Z]+)$//) {
+			warn "Found stray backslash around ", reverse(substr($_, -5));
 			return '\\';
 		}
 		my $command = reverse $1;
@@ -287,7 +287,7 @@ sub next_chunk {
 
 # Expects TeX argument (offset 1) to be reversed; uses chop for efficiency.
 sub measure_or_draw_TeX {
-	my ($widget, undef, $end_chunk, $startx, $starty, $letter_face,
+	my ($widget, $end_chunk, $startx, $starty, $letter_face,
 		$number_face) = @_;
 	my $is_drawing = defined $starty;
 	my $length = 0;
@@ -297,18 +297,18 @@ sub measure_or_draw_TeX {
 	$number_face = '' if not defined $number_face;
 	
 	# Ignore whitespace
-	$_[1] =~ s/\s+$//;
+	s/\s+$//;
 	
 	# If no end-chunk specified, but first character is an opening
 	# bracket, then take a closing bracket as the end chunk.
-	$end_chunk = '}' if $end_chunk eq '' and $_[1] =~ s/\{$//;
+	$end_chunk = '}' if $end_chunk eq '' and s/\{$//;
 	
 	# If no end chunk given, then process only a single chunk.
 	if ($end_chunk eq '') {
 		# Easy: only grab a single chunk
-		my $to_render = next_chunk($widget, $_[1], $letter_face, $number_face);
+		my $to_render = next_chunk($widget, $letter_face, $number_face);
 		# If the "chunk" was a rendering subref, run it
-		return $to_render->($widget, $_[1], $startx, $starty, $letter_face, $number_face)
+		return $to_render->($widget, $startx, $starty, $letter_face, $number_face)
 			if ref($to_render);
 		# Otherwise, render and/or measure the chunk
 		$widget->text_out($to_render, $startx, $starty) if $is_drawing;
@@ -335,12 +335,12 @@ sub measure_or_draw_TeX {
 	$end_chunk = quotemeta $end_chunk;
 	
 	# Parse until we find the end chunk
-	CONTIGUOUS: while (length($_[1]) > 0 and $_[1] !~ s/$end_chunk$//) {
+	CONTIGUOUS: while (length > 0 and not s/$end_chunk$//) {
 		# Pull out stuff to render directly
 		my $to_render = '';
 		my $next_step = 'render';
-		CHUNK: while (length($_[1]) > 0 and $_[1] !~ /[\_\^\{]$/) {
-			my $next_chunk = next_chunk($widget, $_[1], $letter_face, $number_face);
+		CHUNK: while (length > 0 and not /[\_\^\{]$/) {
+			my $next_chunk = next_chunk($widget, $letter_face, $number_face);
 			# If it's a subref, put that directly into our next step
 			# and break out
 			if (ref($next_chunk)) {
@@ -350,7 +350,7 @@ sub measure_or_draw_TeX {
 			# Append our most recent chunk to direct rendering
 			$to_render .= $next_chunk;
 			# If our next chunk is the end chunk, pull it out and exit
-			if ($_[1] =~ s/$end_chunk$//) {
+			if (s/$end_chunk$//) {
 				$next_step = 'done';
 				last CHUNK
 			}
@@ -364,7 +364,7 @@ sub measure_or_draw_TeX {
 		}
 		
 		# Call the next rendering subref, if there is one
-		$increment_lengths->($next_step->($widget, $_[1], $startx,
+		$increment_lengths->($next_step->($widget, $startx,
 			$starty, $letter_face, $number_face)) if ref($next_step);
 		
 		# If we found the expected end chunk, we're done.
@@ -372,9 +372,9 @@ sub measure_or_draw_TeX {
 		
 		# Start again from the top unless we're working with subscripts
 		# or superscripts
-		my $char = chop $_[1];
+		my $char = chop;
 		if ($char ne '^' and $char ne '_') {
-			$_[1] .= $char;
+			$_ .= $char;
 			next CONTIGUOUS;
 		}
 		
@@ -388,7 +388,7 @@ sub measure_or_draw_TeX {
 			$widget->font->size($original_font_size * 2 / 3);
 			if ($char eq '^') {
 				if (defined $super_length) {
-					my $original = reverse($_[1]);
+					my $original = reverse($_);
 					croak("Cannot have two superscripts or subscripts in a "
 						."row (at $char$original)");
 				}
@@ -398,11 +398,11 @@ sub measure_or_draw_TeX {
 					$x = $startx - sin($angle) * $superscript_offset;
 					$y = $starty + $superscript_offset * cos($angle);
 				}
-				$super_length = measure_or_draw_TeX($widget, $_[1], '', $x, $y);
+				$super_length = measure_or_draw_TeX($widget, '', $x, $y);
 			}
 			elsif ($char eq '_') {
 				if (defined $sub_length) {
-					my $original = reverse($_[1]);
+					my $original = reverse($_);
 					croak("Cannot have two superscripts or subscripts in a "
 						."row (at $char$original)");
 				}
@@ -412,12 +412,12 @@ sub measure_or_draw_TeX {
 					$x = $startx - sin($angle) * $subscript_offset;
 					$y = $starty + $subscript_offset * cos($angle);
 				}
-				$sub_length = measure_or_draw_TeX($widget, $_[1], '', $x, $y);
+				$sub_length = measure_or_draw_TeX($widget, '', $x, $y);
 			}
 			$widget->font->size($original_font_size);
 			# Eat whitespace, get the next character
-			$_[1] =~ s/\s+$//;
-			$char = chop $_[1];
+			s/\s+$//;
+			$char = chop;
 		}
 		
 		# update the length with the longer of the two distances
@@ -427,7 +427,7 @@ sub measure_or_draw_TeX {
 		$increment_lengths->($dx + $hair_space);
 		
 		# Our last chop needs to be put back
-		$_[1] .= $char;
+		$_ .= $char;
 	}
 	return $length;
 }
@@ -444,7 +444,7 @@ my %is_brace = (
 );
 
 sub render_left {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
 	my $is_drawing = defined $startx;
 	my $length = 0;
 	my $angle = $widget->font->direction * $deg_to_rad;
@@ -459,21 +459,21 @@ sub render_left {
 		: sub { $length += shift };
 	
 	# Render the opening brace
-	my $opening_brace = chop $_[1];
-	$opening_brace .= chop $_[1] if $opening_brace eq '\\';
+	my $opening_brace = chop;
+	$opening_brace .= chop if $opening_brace eq '\\';
 	$widget->text_out("$spc$is_brace{$opening_brace}", $startx, $starty)
 		if $is_drawing;
 	$increment_lengths->($widget->get_text_width("$spc$is_brace{$opening_brace}"));
 	
 	# Render the contents
 	my $end_chunk = reverse('\right');
-	my $dx = measure_or_draw_TeX($widget, $_[1], $end_chunk, $startx,
+	my $dx = measure_or_draw_TeX($widget, $end_chunk, $startx,
 		$starty, $letter_face, $number_face);
 	$increment_lengths->($dx);
 	
 	# Render the closing brace
-	my $closing_brace = chop $_[1];
-	$closing_brace .= chop $_[1] if $closing_brace eq '\\';
+	my $closing_brace = chop;
+	$closing_brace .= chop if $closing_brace eq '\\';
 	$widget->text_out("$is_brace{$closing_brace}$spc", $startx, $starty)
 		if $is_drawing;
 	$increment_lengths->($widget->get_text_width("$is_brace{$closing_brace}$spc"));
@@ -485,53 +485,53 @@ sub render_left {
 # Font face macros #
 ####################
 sub render_mathrm {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'', '');
 }
 sub render_mathbf {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL BOLD', 'MATHEMATICAL BOLD');
 }
 sub render_boldsymbol {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL BOLD ITALIC', 'MATHEMATICAL BOLD');
 }
 sub render_mathsf {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL SANS-SERIF', 'MATHEMATICAL SANS-SERIF');
 }
 sub render_mathit {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL ITALIC', 'MATHEMATICAL ITALIC');
 }
 sub render_mathtt {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL MONOSPACE', 'MATHEMATICAL MONOSPACE');
 }
 sub render_mathbb {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL DOUBLE-STRUCK', 'MATHEMATICAL DOUBLE-STRUCK');
 }
 sub render_mathfrak {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL FRAKTUR', 'MATHEMATICAL FRAKTUR');
 }
 sub render_mathcal {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL SCRIPT', 'MATHEMATICAL SCRIPT');
 }
 sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, $_[1], '', $startx, $starty,
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
+	return measure_or_draw_TeX($widget, '', $startx, $starty,
 		'MATHEMATICAL SCRIPT', 'MATHEMATICAL SCRIPT');
 }
 
@@ -540,10 +540,10 @@ sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
 ##############
 
 sub _render_decorator {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face, $decorator) = @_;
+	my ($widget, $startx, $starty, $letter_face, $number_face, $decorator) = @_;
 	
 	# Render/measure the next chunk
-	my $length = measure_or_draw_TeX($widget, $_[1], '', $startx, $starty);
+	my $length = measure_or_draw_TeX($widget, '', $startx, $starty);
 	
 	# If we're drawing, then advance x and y, and draw the vector arrow
 	if (defined $startx) {
@@ -591,7 +591,7 @@ sub render_bar {
 #############
 
 sub render_frac {
-	my ($widget, undef, $startx, $starty, $letter_face, $number_face) = @_;
+	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
 	my $angle = $widget->font->direction * $deg_to_rad;
 	my $line_height = $widget->font->height;
 	
@@ -602,15 +602,16 @@ sub render_frac {
 	my $original_font_size = $widget->font->size;
 	$widget->font->size($original_font_size * 0.6);
 	
-	# Compute the widths of the numerator and denominator.
-	my $backup_to_render = $_[1];
-	my $bigger_length = my $upper_length
-		= measure_or_draw_TeX($widget, $_[1], '');
-	my $lower_length = measure_or_draw_TeX($widget, $_[1], '');
+	# Compute the widths of the numerator and denominator. Let them
+	# chomp on $_; we'll restore it only if we're actually rendering.
+	my $backup_to_render = $_;
+	my $bigger_length = my $upper_length = measure_or_draw_TeX($widget, '');
+	my $lower_length = measure_or_draw_TeX($widget, '');
 	$bigger_length = $lower_length if $bigger_length < $lower_length;
 	
 	# Rendering?
 	if (defined $startx) {
+		$_ = $backup_to_render;
 		# Render the numerator.
 		my $vert_offset = 0.5 * $line_height;
 		my $x = $startx - $vert_offset * sin($angle);
@@ -620,7 +621,7 @@ sub render_frac {
 			$x += cos($angle) * $dx;
 			$y += sin($angle) * $dx;
 		}
-		measure_or_draw_TeX($widget, $backup_to_render, '', $x, $y);
+		measure_or_draw_TeX($widget, '', $x, $y);
 		
 		# Render the denominator.
 		$vert_offset = -0.05 * $line_height;
@@ -631,7 +632,7 @@ sub render_frac {
 			$x -= cos($angle) * $dx;
 			$y -= sin($angle) * $dx;
 		}
-		measure_or_draw_TeX($widget, $backup_to_render, '', $x, $y);
+		measure_or_draw_TeX($widget, '', $x, $y);
 		
 		# Finish with the horizontal line
 		$vert_offset = 0.5 * $line_height;
@@ -707,7 +708,7 @@ sub old_TeX_out {
 # of the second argument, $_[1], so that our parser can "eat" characters
 # that it has parsed.
 sub old_measure_or_draw_TeX {
-	my ($widget, undef, $end_char, $startx, $starty) = @_;
+	my ($widget, $end_char, $startx, $starty) = @_;
 	my $is_drawing = defined $starty;
 	my $length = 0;
 	my $angle = $widget->font->direction * $deg_to_rad;
@@ -785,7 +786,7 @@ sub old_measure_or_draw_TeX {
 					$x = $startx - sin($angle) * $superscript_offset;
 					$y = $starty + $superscript_offset * cos($angle);
 				}
-				$super_length = measure_or_draw_TeX($widget, $_[1], '', $x, $y);
+				$super_length = measure_or_draw_TeX($widget, '', $x, $y);
 			}
 			elsif ($char eq '_') {
 				if (defined $sub_length) {
@@ -799,7 +800,7 @@ sub old_measure_or_draw_TeX {
 					$x = $startx - sin($angle) * $subscript_offset;
 					$y = $starty + $subscript_offset * cos($angle);
 				}
-				$sub_length = measure_or_draw_TeX($widget, $_[1], '', $x, $y);
+				$sub_length = measure_or_draw_TeX($widget, '', $x, $y);
 			}
 			$widget->font->size($original_font_size);
 			# Eat whitespace
