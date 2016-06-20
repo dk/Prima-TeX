@@ -284,7 +284,7 @@ sub next_chunk {
 	return $char;
 }
 
-# Expects TeX argument (offset 1) to be reversed; uses chop for efficiency.
+# Expects TeX input, via $_, to be reversed; uses chop for efficiency.
 sub measure_or_draw_TeX {
 	my ($widget, $end_chunk, $startx, $starty, $letter_face,
 		$number_face) = @_;
