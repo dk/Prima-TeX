@@ -100,7 +100,7 @@ my $low_ascent = -0.2;
 my $mild_ascent = -0.08;
 my $op_ascent = -0.1;
 my $descent = -0.1;
-my $padding = "\N{THIN SPACE}";
+my $padding = " ";
 
 my %ascent_for = (
 	(map { $_ => $low_ascent  } qw( a c e g m n o p q r s u v w x y z ) ),
