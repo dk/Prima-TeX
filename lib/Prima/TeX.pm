@@ -26,20 +26,26 @@ my $deg_to_rad = atan2(1, 1) / 45;
 
 sub TeX_out {
 	my ($widget, $text, $startx, $starty) = @_;
-	my $angle = $widget->font->direction * $deg_to_rad;
 	
+	my %op = (
+		startx => $startx,
+		starty => $starty,
+		is_drawing => 1,
+		cos => cos($widget->font->direction * $deg_to_rad),
+		sin => sin($widget->font->direction * $deg_to_rad),
+	) if defined $startx;
+	$op{end_chunk} = '$';
 	my $length = 0;
-	my $is_drawing = defined $starty;
 	
 	while (length ($text) > 0) {
 		# If it starts with something that looks like tex...
 		if ($text =~ s/^\$([^\$]*\$)//) {
 			local $_ = reverse($1);
-			my $dx = measure_or_draw_TeX($widget, '$', $startx, $starty);
+			my $dx = measure_or_draw_TeX($widget, %op);
 			$length += $dx;
-			if ($is_drawing) {
-				$startx += cos($angle) * $dx;
-				$starty += sin($angle) * $dx;
+			if ($op{is_drawing}) {
+				$op{startx} += $op{cos} * $dx;
+				$op{starty} += $op{cos} * $dx;
 			}
 		}
 		# If a pair of dollar-signs remains, then only pull off up to
@@ -56,10 +62,10 @@ sub TeX_out {
 		}
 		next if length($not_tex) == 0;
 		my $dx = $widget->get_text_width($not_tex);
-		if ($is_drawing) {
-			$widget->text_out($not_tex, $startx, $starty);
-			$startx += cos($angle) * $dx;
-			$starty += sin($angle) * $dx;
+		if ($op{is_drawing}) {
+			$widget->text_out($not_tex, $op{startx}, $op{starty});
+			$op{startx} += $op{cos} * $dx;
+			$op{starty} += $op{sin} * $dx;
 		}
 		$length += $dx;
 	}
@@ -229,13 +235,13 @@ my %substitutes = (
 );
 
 sub next_chunk {
-	my ($widget, $letter_face, $number_face) = @_;
+	my ($widget, %op) = (shift, @_);
 	my $char = chop;
 	# ignore spaces
 	return '' if $char =~ /^\s$/;
 	# Roman letters, which use the letter face
 	if ('A' le $char and $char le 'Z' or 'a' le $char and $char le 'z') {
-		my $full_name = "$letter_face CAPITAL $char";
+		my $full_name = "$op{letter_face} CAPITAL $char";
 		$full_name =~ s/CAPITAL/SMALL/ if $char ge 'a';
 		return $substitutes{$full_name} if exists $substitutes{$full_name};
 		return eval "\"\\N{$full_name}\"";
@@ -278,7 +284,7 @@ sub next_chunk {
 		return "$char$command";
 	}
 	# Digits
-	return eval "\"\\N{$number_face DIGIT $name_for_digit[$char]}\""
+	return eval "\"\\N{$op{number_face} DIGIT $name_for_digit[$char]}\""
 		if '0' le $char and $char le '9';
 	# Everything else
 	return $char;
@@ -286,42 +292,41 @@ sub next_chunk {
 
 # Expects TeX input, via $_, to be reversed; uses chop for efficiency.
 sub measure_or_draw_TeX {
-	my ($widget, $end_chunk, $startx, $starty, $letter_face,
-		$number_face) = @_;
-	my $is_drawing = defined $starty;
+	my ($widget, %op) = (shift, 
+		letter_face  => 'MATHEMATICAL ITALIC',
+		number_face => '',
+		@_
+	);
 	my $length = 0;
-	my $angle = $widget->font->direction * $deg_to_rad;
-	
-	$letter_face = 'MATHEMATICAL ITALIC' if not defined $letter_face;
-	$number_face = '' if not defined $number_face;
 	
 	# Ignore whitespace
 	s/\s+$//;
 	
 	# If no end-chunk specified, but first character is an opening
 	# bracket, then take a closing bracket as the end chunk.
-	$end_chunk = '}' if $end_chunk eq '' and s/\{$//;
+	my $end_chunk = delete $op{end_chunk};
+	$end_chunk = '}' if not defined $end_chunk and s/\{$//;
 	
 	# If no end chunk given, then process only a single chunk.
-	if ($end_chunk eq '') {
+	if (not defined $end_chunk) {
 		# Easy: only grab a single chunk
-		my $to_render = next_chunk($widget, $letter_face, $number_face);
+		my $to_render = next_chunk($widget, %op);
 		# If the "chunk" was a rendering subref, run it
-		return $to_render->($widget, $startx, $starty, $letter_face, $number_face)
-			if ref($to_render);
+		return $to_render->($widget, %op) if ref($to_render);
 		# Otherwise, render and/or measure the chunk
-		$widget->text_out($to_render, $startx, $starty) if $is_drawing;
+		$widget->text_out($to_render, $op{startx}, $op{starty})
+			if $op{is_drawing};
 		return $widget->get_text_width($to_render);
 	}
 	
 	# We need to increment lengths all over the place, but the quantities
 	# that need to be updated depend on whether we're rendering or just
 	# measuring. So, we wrap all of that into subrefs.
-	my $increment_lengths = defined $startx
+	my $increment_lengths = $op{is_drawing}
 		? sub {
 			my $dx = shift;
-			$startx += cos($angle) * $dx;
-			$starty += sin($angle) * $dx;
+			$op{startx} += $op{cos} * $dx;
+			$op{starty} += $op{sin} * $dx;
 			$length += $dx;	
 		}
 		: sub { $length += shift };
@@ -341,7 +346,7 @@ sub measure_or_draw_TeX {
 		my $to_render = '';
 		my $next_step = 'render';
 		CHUNK: while (length > 0 and not /[\_\^\{]$/) {
-			my $next_chunk = next_chunk($widget, $letter_face, $number_face);
+			my $next_chunk = next_chunk($widget, %op);
 			# If it's a subref, put that directly into our next step
 			# and break out
 			if (ref($next_chunk)) {
@@ -359,14 +364,13 @@ sub measure_or_draw_TeX {
 		
 		# Render whatever we have on hand
 		if (length($to_render) > 0) {
-			$widget->text_out($to_render, $startx, $starty)
-				if $is_drawing;
+			$widget->text_out($to_render, $op{startx}, $op{starty})
+				if $op{is_drawing};
 			$increment_lengths->($widget->get_text_width($to_render));
 		}
 		
 		# Call the next rendering subref, if there is one
-		$increment_lengths->($next_step->($widget, $startx,
-			$starty, $letter_face, $number_face)) if ref($next_step);
+		$increment_lengths->($next_step->($widget, %op)) if ref($next_step);
 		
 		# If we found the expected end chunk, we're done.
 		return $length if $next_step eq 'done';
@@ -393,13 +397,13 @@ sub measure_or_draw_TeX {
 					croak("Cannot have two superscripts or subscripts in a "
 						."row (at $char$original)");
 				}
-				my ($x, $y);
-				if ($is_drawing) {
+				my %sup_op = %op;
+				if ($op{is_drawing}) {
 					my $superscript_offset = 0.45 * $line_height;
-					$x = $startx - sin($angle) * $superscript_offset;
-					$y = $starty + $superscript_offset * cos($angle);
+					$sup_op{startx} -= $op{sin} * $superscript_offset;
+					$sup_op{starty} += $superscript_offset * $op{cos};
 				}
-				$super_length = measure_or_draw_TeX($widget, '', $x, $y);
+				$super_length = measure_or_draw_TeX($widget, %sup_op);
 			}
 			elsif ($char eq '_') {
 				if (defined $sub_length) {
@@ -407,13 +411,13 @@ sub measure_or_draw_TeX {
 					croak("Cannot have two superscripts or subscripts in a "
 						."row (at $char$original)");
 				}
-				my ($x, $y);
-				if ($is_drawing) {
+				my %sub_op = %op;
+				if ($op{is_drawing}) {
 					my $subscript_offset = -0.1 * $line_height;
-					$x = $startx - sin($angle) * $subscript_offset;
-					$y = $starty + $subscript_offset * cos($angle);
+					$sub_op{startx} -= $op{sin} * $subscript_offset;
+					$sub_op{starty} += $subscript_offset * $op{cos};
 				}
-				$sub_length = measure_or_draw_TeX($widget, '', $x, $y);
+				$sub_length = measure_or_draw_TeX($widget, %sub_op);
 			}
 			$widget->font->size($original_font_size);
 			# Eat whitespace, get the next character
@@ -445,38 +449,36 @@ my %is_brace = (
 );
 
 sub render_left {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	my $is_drawing = defined $startx;
+	my ($widget, %op) = (shift, @_);
 	my $length = 0;
-	my $angle = $widget->font->direction * $deg_to_rad;
 	my $spc = "\N{HAIR SPACE}\N{HAIR SPACE}";
-	my $increment_lengths = defined $startx
+	my $increment_lengths = $op{is_drawing}
 		? sub {
 			my $dx = shift;
-			$startx += cos($angle) * $dx;
-			$starty += sin($angle) * $dx;
-			$length += $dx;	
+			$op{startx} += $op{cos} * $dx;
+			$op{starty} += $op{sin} * $dx;
+			$length += $dx;
 		}
 		: sub { $length += shift };
 	
 	# Render the opening brace
 	my $opening_brace = chop;
 	$opening_brace .= chop if $opening_brace eq '\\';
-	$widget->text_out("$spc$is_brace{$opening_brace}", $startx, $starty)
-		if $is_drawing;
+	$widget->text_out("$spc$is_brace{$opening_brace}",
+		$op{startx}, $op{starty}) if $op{is_drawing};
 	$increment_lengths->($widget->get_text_width("$spc$is_brace{$opening_brace}"));
 	
 	# Render the contents
 	my $end_chunk = reverse('\right');
-	my $dx = measure_or_draw_TeX($widget, $end_chunk, $startx,
-		$starty, $letter_face, $number_face);
+	my $dx = measure_or_draw_TeX($widget, %op,
+		end_chunk => $end_chunk);
 	$increment_lengths->($dx);
 	
 	# Render the closing brace
 	my $closing_brace = chop;
 	$closing_brace .= chop if $closing_brace eq '\\';
-	$widget->text_out("$is_brace{$closing_brace}$spc", $startx, $starty)
-		if $is_drawing;
+	$widget->text_out("$is_brace{$closing_brace}$spc",
+		$op{startx}, $op{starty}) if $op{is_drawing};
 	$increment_lengths->($widget->get_text_width("$is_brace{$closing_brace}$spc"));
 	
 	return $length;
@@ -486,54 +488,53 @@ sub render_left {
 # Font face macros #
 ####################
 sub render_mathrm {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'', '');
+	return measure_or_draw_TeX(@_,
+		letter_face => '', number_face => '');
 }
 sub render_mathbf {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL BOLD', 'MATHEMATICAL BOLD');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL BOLD',
+		number_face => 'MATHEMATICAL BOLD');
 }
 sub render_boldsymbol {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL BOLD ITALIC', 'MATHEMATICAL BOLD');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL BOLD ITALIC',
+		number_face => 'MATHEMATICAL BOLD');
 }
 sub render_mathsf {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL SANS-SERIF', 'MATHEMATICAL SANS-SERIF');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL SANS-SERIF',
+		number_face => 'MATHEMATICAL SANS-SERIF');
 }
 sub render_mathit {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL ITALIC', 'MATHEMATICAL ITALIC');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL ITALIC',
+		number_face => 'MATHEMATICAL ITALIC');
 }
 sub render_mathtt {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL MONOSPACE', 'MATHEMATICAL MONOSPACE');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL MONOSPACE',
+		number_face => 'MATHEMATICAL MONOSPACE');
 }
 sub render_mathbb {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL DOUBLE-STRUCK', 'MATHEMATICAL DOUBLE-STRUCK');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL DOUBLE-STRUCK',
+		number_face => 'MATHEMATICAL DOUBLE-STRUCK');
 }
 sub render_mathfrak {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL FRAKTUR', 'MATHEMATICAL FRAKTUR');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL FRAKTUR',
+		number_face => 'MATHEMATICAL FRAKTUR');
 }
 sub render_mathcal {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL SCRIPT', 'MATHEMATICAL SCRIPT');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL SCRIPT',
+		number_face => 'MATHEMATICAL SCRIPT');
 }
 sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	return measure_or_draw_TeX($widget, '', $startx, $starty,
-		'MATHEMATICAL SCRIPT', 'MATHEMATICAL SCRIPT');
+	return measure_or_draw_TeX(@_,
+		letter_face => 'MATHEMATICAL SCRIPT',
+		number_face => 'MATHEMATICAL SCRIPT');
 }
 
 ##############
@@ -541,21 +542,16 @@ sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
 ##############
 
 sub _render_decorator {
-	my ($widget, $startx, $starty, $letter_face, $number_face, $decorator) = @_;
+	my ($widget, %op) = (shift, @_);
 	
 	# Render/measure the next chunk
-	my $length = measure_or_draw_TeX($widget, '', $startx, $starty);
+	my $length = measure_or_draw_TeX($widget, %op);
 	
-	# If we're drawing, then advance x and y, and draw the vector arrow
-	if (defined $startx) {
-#		my $hair_space = $widget->get_text_width("\N{HAIR SPACE}");
-		my $angle = $widget->font->direction * $deg_to_rad;
-#		$startx += cos($angle) * ($length + $hair_space);
-#		$starty += sin($angle) * ($length + $hair_space);
-		$startx += cos($angle) * $length;
-		$starty += sin($angle) * $length;
-		$widget->text_out($decorator, $startx, $starty);
-	}
+	# If we're drawing, then advance x and y, and draw the decarator
+	$widget->text_out($op{decorator},
+		$op{startx} + $op{cos} * $length,
+		$op{starty} + $op{sin} * $length
+	) if $op{is_drawing};
 	
 	# return chunk's length
 	return $length;
@@ -563,27 +559,27 @@ sub _render_decorator {
 
 # Get next chunk, and append with U+20D7, combining right arrow above
 sub render_vec {
-	return _render_decorator(@_, "\N{HAIR SPACE}\N{COMBINING RIGHT ARROW ABOVE}");
+	return _render_decorator(@_, decorator => "\N{HAIR SPACE}\N{COMBINING RIGHT ARROW ABOVE}");
 }
 
 sub render_ddot {
-	return _render_decorator(@_, "\N{COMBINING DIAERESIS}");
+	return _render_decorator(@_, decorator => "\N{COMBINING DIAERESIS}");
 }
 
 sub render_dot {
-	return _render_decorator(@_, "\N{COMBINING DOT ABOVE}");
+	return _render_decorator(@_, decorator => "\N{COMBINING DOT ABOVE}");
 }
 
 sub render_hat {
-	return _render_decorator(@_, "\N{COMBINING CIRCUMFLEX ACCENT}");
+	return _render_decorator(@_, decorator => "\N{COMBINING CIRCUMFLEX ACCENT}");
 }
 
 sub render_tilde {
-	return _render_decorator(@_, "\N{COMBINING TILDE}");
+	return _render_decorator(@_, decorator => "\N{COMBINING TILDE}");
 }
 
 sub render_bar {
-	return _render_decorator(@_, "\N{COMBINING MACRON}");
+	return _render_decorator(@_, decorator => "\N{COMBINING MACRON}");
 }
 
 
@@ -592,12 +588,11 @@ sub render_bar {
 #############
 
 sub render_frac {
-	my ($widget, $startx, $starty, $letter_face, $number_face) = @_;
-	my $angle = $widget->font->direction * $deg_to_rad;
+	my ($widget, %op) = (shift, @_);
 	my $line_height = $widget->font->height;
 	
 	# Strip leading whitespace
-	$_[1] =~ s/\s+$//;
+	s/\s+$//;
 	
 	# Reduce the font size
 	my $original_font_size = $widget->font->size;
@@ -606,41 +601,41 @@ sub render_frac {
 	# Compute the widths of the numerator and denominator. Let them
 	# chomp on $_; we'll restore it only if we're actually rendering.
 	my $backup_to_render = $_;
-	my $bigger_length = my $upper_length = measure_or_draw_TeX($widget, '');
-	my $lower_length = measure_or_draw_TeX($widget, '');
+	my $bigger_length = my $upper_length = measure_or_draw_TeX($widget, %op);
+	my $lower_length = measure_or_draw_TeX($widget, %op);
 	$bigger_length = $lower_length if $bigger_length < $lower_length;
 	
 	# Rendering?
-	if (defined $startx) {
+	if ($op{is_drawing}) {
 		$_ = $backup_to_render;
 		# Render the numerator.
 		my $vert_offset = 0.5 * $line_height;
-		my $x = $startx - $vert_offset * sin($angle);
-		my $y = $starty + $vert_offset * cos($angle);
+		my $x = $op{startx} - $vert_offset * $op{sin};
+		my $y = $op{starty} + $vert_offset * $op{cos};
 		if ($upper_length < $lower_length) {
 			my $dx = ($lower_length - $upper_length) / 2;
-			$x += cos($angle) * $dx;
-			$y += sin($angle) * $dx;
+			$x += $op{cos} * $dx;
+			$y += $op{sin} * $dx;
 		}
-		measure_or_draw_TeX($widget, '', $x, $y);
+		measure_or_draw_TeX($widget, %op, startx => $x, starty => $y);
 		
 		# Render the denominator.
 		$vert_offset = -0.05 * $line_height;
-		$x = $startx - $vert_offset * sin($angle);
-		$y = $starty + $vert_offset * cos($angle);
+		$x = $op{startx} - $vert_offset * $op{sin};
+		$y = $op{starty} + $vert_offset * $op{cos};
 		if ($lower_length < $upper_length) {
 			my $dx = ($upper_length - $lower_length) / 2;
-			$x -= cos($angle) * $dx;
-			$y -= sin($angle) * $dx;
+			$x -= $op{cos} * $dx;
+			$y -= $op{sin} * $dx;
 		}
-		measure_or_draw_TeX($widget, '', $x, $y);
+		measure_or_draw_TeX($widget, %op, startx => $x, starty => $y);
 		
 		# Finish with the horizontal line
 		$vert_offset = 0.5 * $line_height;
-		$x = $startx - $vert_offset * sin($angle);
-		$y = $starty + $vert_offset * cos($angle);
-		my $x2 = $x + cos($angle) * $bigger_length;
-		my $y2 = $y + sin($angle) * $bigger_length;
+		$x = $op{startx} - $vert_offset * $op{sin};
+		$y = $op{starty} + $vert_offset * $op{cos};
+		my $x2 = $x + $op{cos} * $bigger_length;
+		my $y2 = $y + $op{sin} * $bigger_length;
 		$widget->line($x, $y, $x2, $y2);
 	}
 	
