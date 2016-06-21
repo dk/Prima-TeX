@@ -4,7 +4,7 @@ use PDL;
 use Prima qw(Application ComboBox);
 use Prima::TeX;
 
-my $tex = '$a + b = c$';
+my $tex = 'variables and operators: $a + b = c$';
 my $font_size = 15;
 my $wDisplay = Prima::MainWindow->create(
 	text => 'TeX Demo',
@@ -14,7 +14,10 @@ my $wDisplay = Prima::MainWindow->create(
 		my $self = shift;
 		$self->clear;
 		$self->font->size($font_size);
-		Prima::TeX::TeX_out($self, $tex, 10, 50);
+		my $tex_to_show = $tex =~ s/^.*: //r;
+		Prima::TeX::TeX_out($self, $tex_to_show, 10, 50);
+		$self->line(0, 50, $self->width, 50);
+		$self->line(0, 50 + $self->font->height, $self->width, 50 + $self->font->height);
 	}
 );
 
@@ -43,12 +46,14 @@ $wDisplay->insert(ComboBox =>
 	style => cs::DropDown,
 	text => $tex,
 	items => [
-		'$foo$',
-		'$10$',
-		'$10^3$',
-		'$10^foo$',
-		'$\sigma + \ell + 5$',
-		'$10^{foo}_{foo}$',
+		$tex,
+		'consecutive variables: $ab + c = d$',
+		'numbers and variables: $10 + a = 8.5$',
+		'!positive/negative signs: $10 + -5$',
+		'superscripts: $10^3$',
+		'brace handling: $10^foo$',
+		'greek and other symbols: $\sigma + \ell + 5$',
+		'superscripts and subscripts: $10^{foo}_{foo}$',
 		'$N^{\alpha\theta}_\gamma$',
 		'$10^f_f$ $N^f_f$',
 		'$\sigma_\ell + 5 + \Omega$',
