@@ -564,12 +564,14 @@ sub measure_or_draw_TeX {
 		# Begin looking for superscripts and subscripts. Note that they
 		# can appear in either order, hence the while loop.
 		my ($sub_length, $super_length);
-		while ($char eq '^' or $char eq '_') {
+		SUP_SUB: while ($char eq '^' or $char eq '_') {
 			if ($char eq '^') {
 				if (defined $super_length) {
 					my $original = reverse($_);
-					croak("Cannot have two superscripts or subscripts in a "
-						."row (at $char$original)");
+					warn("Found consecutive superscript (at $char$original); ignoring");
+					# Eat up bad stuff, don't draw, ignore lengths
+					measure_or_draw_TeX($widget, %op, is_drawing => 0);
+					next SUP_SUB;
 				}
 				my %sup_op = %op;
 				if ($op{is_drawing}) {
@@ -585,8 +587,10 @@ sub measure_or_draw_TeX {
 			elsif ($char eq '_') {
 				if (defined $sub_length) {
 					my $original = reverse($_);
-					croak("Cannot have two superscripts or subscripts in a "
-						."row (at $char$original)");
+					warn("Found consecutive superscript (at $char$original); ignoring");
+					# Eat up bad stuff, don't draw, ignore lengths
+					measure_or_draw_TeX($widget, %op, is_drawing => 0);
+					next SUP_SUB;
 				}
 				my %sub_op = %op;
 				if ($op{is_drawing}) {
@@ -597,6 +601,8 @@ sub measure_or_draw_TeX {
 				# XXX maybe should track descent, but ignoring for now.
 				($sub_length) = measure_or_draw_TeX($widget, %sub_op);
 			}
+		}
+		continue {
 			# Eat whitespace, get the next character
 			s/\s+$//;
 			$char = chop;
