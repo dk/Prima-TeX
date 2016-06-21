@@ -622,6 +622,16 @@ sub measure_or_draw_TeX {
 }
 
 ###########
+# Phantom #
+###########
+
+# \phantom eats up white space with the length of the given stuff. Easy:
+# just turn off drawing.
+sub render_phantom {
+	return measure_or_draw_TeX(@_, is_drawing => 0);
+}
+
+###########
 # Bracing #
 ###########
 my %is_brace = (
