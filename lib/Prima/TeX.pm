@@ -489,7 +489,7 @@ sub measure_or_draw_TeX {
 		# Pull out stuff to render directly
 		CHUNK: while (length > 0 and not /[\_\^\{]$/) {
 			my $next_chunk = next_chunk($widget, %op);
-			next CHUNK if not defined $next_chunk;
+			next CHUNK if not defined $next_chunk; # skip whitespace
 			
 			# Make sure we have a ref
 			if (not ref($next_chunk)) {
@@ -510,7 +510,7 @@ sub measure_or_draw_TeX {
 			$to_render .= $rpad . ($next_chunk->{lpad} || '')
 				if defined $rpad;
 			$to_render .= $next_chunk->{unicode};
-			$rpad = $next_chunk->{rpad};
+			$rpad = $next_chunk->{rpad} || '';
 			
 			$update_ascent_descent->(
 				$next_chunk->{ascent}, $next_chunk->{descent});
