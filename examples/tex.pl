@@ -48,6 +48,10 @@ my $wDisplay = Prima::MainWindow->create(
 		Prima::TeX::TeX_out($self, '$\int_{x=0}^{1} x^2 \, dx', 10, 160);
 		Prima::TeX::TeX_out($self, '$\unkown{x}$', 10, 145);
 		
+		Prima::TeX::TeX_out($self, '$\ddot\theta \ddot a \ddot i \ddot P \ddot t \ddot +$', 10, 130);
+		Prima::TeX::TeX_out($self, '$\vec\theta \vec a \vec i \vec P \vec t \vec +$', 10, 110);
+		
+		Prima::TeX::TeX_out($self, '$\hat{\tilde{\ddot{\vec\theta}}} \vec a \vec i \vec P \vec t \vec +$', 10, 85);
 		
 		#Prima::TeX::TeX_out($self, '123 $\alpha_3$ 456', 150, 150);
 		#Prima::TeX::TeX_out($self, '$3 \times 4$', 150, 130);
