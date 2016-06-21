@@ -85,7 +85,7 @@ my %special_formatting = (
 	',' => ",\N{THIN SPACE}",
 	'<' => "\N{THIN SPACE}<\N{THIN SPACE}",
 	'>' => "\N{THIN SPACE}>\N{THIN SPACE}",
-	'~' => "\N{THIN SPACE}\N{TILDE OPERATOR}\N{THIN SPACE}",
+	'~' => " ", # should be non-breaking space, technically
 	'=' => "\N{THIN SPACE}=\N{THIN SPACE}",
 );
 
