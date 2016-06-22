@@ -117,6 +117,7 @@ my %special_formatting = map {;
 		ascent  => $op_ascent,
 	}
 } qw (+ - < > =);
+$special_formatting{'-'}{unicode} = "\N{MINUS SIGN}";
 $special_formatting{'/'} = {
 	unicode => '/',
 	lpad    => $padding,
