@@ -49,7 +49,7 @@ $wDisplay->insert(ComboBox =>
 		$tex,
 		'consecutive variables: $ab + c = d$',
 		'numbers and variables: $10 + a = 8.5$',
-		'!positive/negative signs: $10 + -5$',
+		'positive/negative signs: $-5 - 10 + -5 = -20$',
 		'superscripts: $10^3$',
 		'brace handling: $10^foo$',
 		'greek and other symbols: $\sigma + \ell + 5$',

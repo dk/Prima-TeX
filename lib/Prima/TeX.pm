@@ -74,25 +74,6 @@ sub TeX_out {
 	return $length;
 }
 
-# Things we need to track:
-# - Desired left and right padding
-# - Per-character ascent and descent
-#
-# Details about padding implementation:
-# If it's a sign following an operator, it wants to be close to what
-#   follows
-# If it's operated on, we ignore desired padding. For example, the '+'
-#   in the following usually gets padding:
-#     $ a + b $
-#   but if we wrap it or operate on it like in these:
-#     $ a {+} b $
-#     $ a \ddot + b $
-#   then the padding gets dropped. (Superscripts/subscripts do not have
-#   this effect.)
-# Operators that act as the final character loose padding. See the '+':
-#     $ a + $
-# 
-
 use charnames qw(:loose);
 my @name_for_digit = qw(ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE);
 
@@ -116,15 +97,14 @@ my %special_formatting = map {;
 		rpad    => $padding,
 		ascent  => $op_ascent,
 	}
-} qw (+ - < > =);
+} qw (+ - * / < > =);
 $special_formatting{'-'}{unicode} = "\N{MINUS SIGN}";
-$special_formatting{'/'} = {
-	unicode => '/',
-	lpad    => $padding,
-	rpad    => $padding,
-};
+$special_formatting{'*'}{unicode} = "\N{ASTERISK OPERATOR}";
+$special_formatting{$_}->{can_be_unary} = 1 foreach qw(+ - * /);
+delete $special_formatting{'/'}{ascent};
 $special_formatting{'~'} = {
 	unicode => ' ',
+	next_op_infix => 'copy',
 };
 $special_formatting{','} = {
 	unicode => ',',
@@ -138,7 +118,44 @@ my %is_single_symbol_unisym = (
 	':' => "\N{THIN SPACE}",
 	';' => ' ',
 );
-$_ = { unicode => $_ } foreach values %is_single_symbol_unisym;
+$_ = { unicode => $_, next_op_infix => 'copy' }
+	foreach values %is_single_symbol_unisym;
+
+# Operators that can be either unary or infix:
+my %unary_ops = (
+	times => "\N{MULTIPLICATION SIGN}",
+	pm => "\N{PLUS-MINUS SIGN}",
+	cap => "\N{INTERSECTION}",
+	diamond => "\N{DIAMOND OPERATOR}",
+	oplus => "\N{CIRCLED PLUS}",
+	mp => "\N{MINUS-OR-PLUS SIGN}",
+	cup => "\N{UNION}",
+	bigtriangleup => "\N{WHITE UP-POINTING TRIANGLE}",
+	ominus => "\N{CIRCLED MINUS}",
+	uplus => "\N{MULTISET UNION}",
+	bigtriangledown => "\N{WHITE DOWN-POINTING TRIANGLE}",
+	otimes => "\N{CIRCLED TIMES}",
+	div => "\N{DIVISION SIGN}",
+	sqcap => "\N{SQUARE CAP}",
+	triangleright => "\N{CONTAINS AS NORMAL SUBGROUP}",
+	oslash => "\N{CIRCLED DIVISION SLASH}",
+	cdot => "\N{DOT OPERATOR}",
+	sqcup => "\N{SQUARE CUP}",
+	triangleleft => "\N{NORMAL SUBGROUP OF}",
+	odot => "\N{CIRCLED DOT OPERATOR}",
+	star => "\N{STAR OPERATOR}",
+	ast => "\N{ASTERISK OPERATOR}",
+	vee => "\N{LOGICAL OR}",
+	amalg => "\N{AMALGAMATION OR COPRODUCT}",
+	bigcirc => "\N{LARGE CIRCLE}",
+	setminus => "\N{REVERSE SOLIDUS OPERATOR}",
+	wedge => "\N{LOGICAL AND}",
+	dagger => "\N{DAGGER}",
+	circ => "\N{RING OPERATOR}",
+	bullet => "\N{BULLET OPERATOR}",
+	wr => "\N{WREATH PRODUCT}",
+	ddagger => "\N{DOUBLE DAGGER}",
+);
 
 # TeX macros that correspond to simple Unicode sequences, and which are
 # operators. These will be merged into unisym below, together with a bit
@@ -146,8 +163,6 @@ $_ = { unicode => $_ } foreach values %is_single_symbol_unisym;
 my %normal_ops = (
 	# Binary operators
 	to => "\N{RIGHTWARDS ARROW}",
-	pm => "\N{PLUS-MINUS SIGN}",
-	times => "\N{MULTIPLICATION SIGN}",
 	
 	# Equalities
 	neq    => "\N{NOT EQUAL TO}",
@@ -181,7 +196,9 @@ my %low_ops = (
 
 # Add padding for all ops
 $_ = { lpad => $padding, rpad => $padding, unicode => $_ }
-	foreach (values %normal_ops, values %low_ops);
+	foreach (values %normal_ops, values %low_ops, values %unary_ops);
+# Add unary indication to unary ops
+$_->{can_be_unary} = 1 foreach (values %unary_ops);
 # Add descent for low ops
 $_->{descent} = $descent foreach values %low_ops;
 
@@ -249,7 +266,7 @@ my %greek = (
 	varOmega => "\N{MATHEMATICAL ITALIC CAPITAL omega}",
 );
 # Convert to hashrefs
-$_ = { unicode => $_ } foreach values %greek;
+$_ = { unicode => $_, next_op_infix => 1 } foreach values %greek;
 # Add ascent and descent information
 $greek{$_}{ascent} = $low_ascent
 	foreach qw(alpha gamma epsilon varepsilon eta iota kappa mu nu
@@ -258,15 +275,15 @@ $greek{$_}{descent} = $descent
 	foreach qw(beta gamma zeta eta mu xi rho varrho varsigma phi varphi
 		chi psi);
 
+my %spacing = (
+	quad => "\N{EN QUAD}",
+	qquad => "\N{EM QUAD}",
+);
+$_ = { unicode => $_ } foreach values %spacing;
+
 my %misc_symbols = (
 	nabla => "\N{NABLA}",
 	partial => "\N{MATHEMATICAL ITALIC PARTIAL DIFFERENTIAL}",
-	
-	# spacing
-	quad => "\N{EN QUAD}",
-	qquad => "\N{EM QUAD}",
-	
-	# Special characters
 	Re => "\N{BLACK-LETTER CAPITAL R}",
 	Im => "\N{BLACK-LETTER CAPITAL I}",
 	imath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS I}",
@@ -276,7 +293,7 @@ my %misc_symbols = (
 	infty => "\N{INFINITY}",
 );
 # Convert to hashrefs and add any special ascent or descent info
-$_ = { unicode => $_ } foreach values %misc_symbols;
+$_ = { unicode => $_, next_op_infix => 1 } foreach values %misc_symbols;
 $misc_symbols{imath}{ascent} = $misc_symbols{jmath}{ascent}
 	= $misc_symbols{infty}{ascent} = $low_ascent;
 $misc_symbols{jmath}{descent} = $descent;
@@ -296,8 +313,10 @@ $_ = { unicode => $_, superscript => 0.8, subscript => -0.2 }
 my %is_unisym = (
 	%normal_ops,
 	%low_ops,
+	%unary_ops,
 	%functions,
 	%greek,
+	%spacing,
 	%misc_symbols,
 	%big_things,
 );
@@ -333,7 +352,7 @@ sub next_chunk {
 	my $char = chop;
 	# ignore spaces
 	return if $char =~ /^\s$/;
-	my $to_return = { unicode => $char };
+	my $to_return = { unicode => $char, next_op_infix => 1 };
 	# Roman letters, which use the letter face
 	if ('A' le $char and $char le 'Z' or 'a' le $char and $char le 'z') {
 		my $full_name = "$op{letter_face} CAPITAL $char";
@@ -371,11 +390,11 @@ sub next_chunk {
 			return $widget->{tex_macros}{$command};
 		}
 		# custom parsing/rendering provided by widget method
-		if (my $to_return = $widget->can("render_tex_$command")) {
+		if ($to_return = $widget->can("render_tex_$command")) {
 			return $to_return;
 		}
 		# custom parsing/rendering provided by this package, like \frac
-		if (my $to_return = __PACKAGE__->can("render_$command")) {
+		if ($to_return = __PACKAGE__->can("render_$command")) {
 			return $to_return;
 		}
 		# what could be out here?
@@ -478,6 +497,11 @@ sub measure_or_draw_TeX {
 	# Turn the end chunk into a regex
 	$end_chunk = quotemeta $end_chunk;
 	
+	# If the current chunk is an operator, we might render it as a
+	# unary operator, or as an infix operator. We start off expecting
+	# unary.
+	my $next_op_infix = 0;
+	
 	# Parse until we find the end chunk
 	my $prev_length = 1 + length;
 	my $rpad; # undef means we haven't rendered anything yet.
@@ -508,13 +532,21 @@ sub measure_or_draw_TeX {
 			# Append our most recent chunk to direct rendering,
 			# accounting for padding. If rpad is undef, then this is
 			# the first thing to render, in which case we ignore lpad.
-			$to_render .= $rpad . ($next_chunk->{lpad} || '')
-				if defined $rpad;
+			if (defined $rpad) {
+				$to_render .= $rpad;
+				$to_render .= ($next_chunk->{lpad} || '')
+					if not $next_chunk->{can_be_unary}
+						or $next_op_infix;
+			}
 			$to_render .= $next_chunk->{unicode};
-			$rpad = $next_chunk->{rpad} || '';
 			
+			# update ascent, descent, rpad, and next_op_infix
 			$update_ascent_descent->(
 				$next_chunk->{ascent}, $next_chunk->{descent});
+			$rpad = $next_chunk->{rpad} || '';
+			$rpad = '' if $next_chunk->{can_be_unary} and not $next_op_infix;
+			$next_op_infix = $next_chunk->{next_op_infix}
+				if 'copy' ne ($next_chunk->{next_op_infix} || '');
 		}
 		continue {
 			# If our next chunk is the end chunk, pull it out and exit
@@ -538,14 +570,16 @@ sub measure_or_draw_TeX {
 				if $rpad;
 			$rpad = '';
 			# execute subref
-			my ($dx, $asc, $desc) = $next_step->($widget, %op);
+			my ($dx, $asc, $desc, $infix) = $next_step->($widget, %op);
 			# update things we're tracking
 			$increment_lengths->($dx);
 			$update_ascent_descent->($asc, $desc);
+			$infix ||= '';
+			$next_op_infix = $infix unless $infix eq 'copy';
 		}
 		
 		# If we found the expected end chunk, we're done.
-		return ($length, $ascent, $descent) if $next_step eq 'done';
+		return ($length, $ascent, $descent, $next_op_infix) if $next_step eq 'done';
 		
 		# Start again from the top unless we're working with subscripts
 		# or superscripts
