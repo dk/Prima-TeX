@@ -352,6 +352,15 @@ sub next_chunk {
 	my $char = chop;
 	# ignore spaces
 	return if $char =~ /^\s$/;
+	
+	# Opening curly bracket denotes the start of a bare block. We'll
+	# handle this with a particularly clever trick: just invoke
+	# measure_or_draw_TeX on the sub-block!
+	if ($char eq '{') {
+		$_ .= '{';
+		return \&measure_or_draw_TeX;
+	}
+	
 	my $to_return = { unicode => $char, next_op_infix => 1 };
 	# Roman letters, which use the letter face
 	if ('A' le $char and $char le 'Z' or 'a' le $char and $char le 'z') {
@@ -493,7 +502,6 @@ sub measure_or_draw_TeX {
 	# Needed for adding a bit of room for subscripts and superscripts
 	my $hair_space = $widget->get_text_width("\N{HAIR SPACE}");
 	
-	my %is_special = map { $_ => 1 } qw(_ ^ { );
 	# Turn the end chunk into a regex
 	$end_chunk = quotemeta $end_chunk;
 	
@@ -512,7 +520,7 @@ sub measure_or_draw_TeX {
 		my $to_render = '';
 		my $next_step = 'render';
 		# Pull out stuff to render directly
-		CHUNK: while (length > 0 and not /[\_\^\{]$/) {
+		CHUNK: while (length > 0 and not /[\_\^]$/) {
 			my $next_chunk = next_chunk($widget, %op);
 			next CHUNK if not defined $next_chunk; # skip whitespace
 			
