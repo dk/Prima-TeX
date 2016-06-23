@@ -1,10 +1,16 @@
 use strict;
 use warnings;
-use PDL;
-use Prima qw(Application ComboBox);
+use Prima qw(Application ComboBox Label);
 use Prima::TeX;
 
-my $tex = 'variables and operators: $a + b = c$';
+# We'll populate this below.
+my %explanations;
+
+# This is our starting example
+my $tex = 'basic numbers: $10.1 + 12.4=22.5$',
+
+# Create the main window. We'll render the TeX output directly onto this
+# window, and we'll pack the drop-down boxes and explanation label, too.
 my $font_size = 15;
 my $wDisplay = Prima::MainWindow->create(
 	text => 'TeX Demo',
@@ -21,7 +27,18 @@ my $wDisplay = Prima::MainWindow->create(
 	}
 );
 
-# Insert a list box for the font size
+# This label contains an explanation of what we're looking for with each
+# drop-down example.
+my $label = $wDisplay->insert(Label =>
+	place => {
+		x => 10, relwidth => 1, width => -20,
+		y => 0, height => 50, anchor => 'sw',
+	},
+	text => '',
+	wordWrap => 1,
+);
+
+# The user can change the font size with this drop-down:
 $wDisplay->insert(ComboBox =>
 	place => {
 		anchor => 'sw',
@@ -36,7 +53,8 @@ $wDisplay->insert(ComboBox =>
 	},
 );
 
-# Insert the combo box and the font size selection at the upper part
+# This combo-box contains the list of example equations. The user can
+# also enter TeX expressions of their own.
 $wDisplay->insert(ComboBox => 
 	place => {
 		anchor => 'sw',
@@ -46,10 +64,15 @@ $wDisplay->insert(ComboBox =>
 	style => cs::DropDown,
 	text => $tex,
 	items => [
+		# Basic numerals and operator positioning
 		$tex,
-		'consecutive variables: $ab + c = d$',
-		'numbers and variables: $10 + a = 8.5$',
 		'positive/negative signs: $-5 - 10 + -5 = -20$',
+		'variables: $ab + c > d$',
+		# Superscripts and subscripts
+		'superscripts: $10^6 = 1 / 10^{-6}$',
+		'subscripts: $a_1 + b_{1} = c_{12}$',
+		
+		'spacing and superscripts: $5\,000\,000 = 5\times10^6$',
 		'superscripts: $10^3$',
 		'brace handling: $10^foo$',
 		'greek and other symbols: $\sigma + \ell + 5$',
@@ -98,6 +121,33 @@ $wDisplay->insert(ComboBox =>
 	onChange => sub {
 		$tex = shift->text;
 		$wDisplay->repaint;
+		my ($tag) = $tex =~ /^(.*):/;
+		$label->text($explanations{$tag || ''} || '');
 	}
 );
+
+# Here are our explanation of each example.
+%explanations = (
+	'basic numbers' => <<EXP,
+Numerals are upright. Spacing between numerals and decimal point are all
+unnoticible. There is spacing between the numbers and the operators.
+EXP
+	'positive/negative signs' => <<EXP,
+Binary operators have plenty of space around them. Unary operators are
+tightly affixed to their operands.
+EXP
+	'superscripts' => <<EXP,
+Superscripts render just below the top of the line, and can group.
+EXP
+	'subscripts' => <<EXP,
+Subscripts render just above the bottom of the line, and can be grouped.
+EXP
+	'variables' => <<EXP,
+Variables are rendered in italic. Consecutive variables have no spacing
+between them.
+EXP
+);
+
+# And finally, run it!
+$label->text($explanations{'basic numbers'});
 run Prima;
