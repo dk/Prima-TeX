@@ -71,7 +71,8 @@ $wDisplay->insert(ComboBox =>
 		# Superscripts and subscripts
 		'superscripts: $10^6 = 1 / 10^{-6}$',
 		'subscripts: $a_1 + b_{1} = c_{12}$',
-		
+		# Controlling spacing
+		'brace-enclosed operators: $a + b {+} c$',
 		'spacing and superscripts: $5\,000\,000 = 5\times10^6$',
 		'superscripts: $10^3$',
 		'brace handling: $10^foo$',
@@ -145,6 +146,10 @@ EXP
 	'variables' => <<EXP,
 Variables are rendered in italic. Consecutive variables have no spacing
 between them.
+EXP
+	'brace-enclosed operators' => <<EXP,
+The second addition symbol is enclosed within braces, discarding the
+operator's padding.
 EXP
 );
 
