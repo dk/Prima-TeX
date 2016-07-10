@@ -435,8 +435,9 @@ sub generate_italic_digit_renderer {
 		my $width = $widget->get_text_width($digit);
 		# Switch back
 		$widget->font->style(fs::Normal);
-		# Return widt
-		return ($width, 0, 0);
+		# Return width, ignore ascent and descent, and this expects
+		# infix
+		return ($width, 0, 0, 1);
 	};
 }
 

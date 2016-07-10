@@ -79,6 +79,7 @@ $wDisplay->insert(ComboBox =>
 		'boldsymbol: $\boldsymbol{A^1 + B^2 + a^b = \alpha^\beta}$',
 		'mathsf: $\mathsf{A^1 + B^2 + a^b = \alpha^\beta}$',
 		'mathit: $\mathit{A^1 + B^2 + a^b = \alpha^\beta}$',
+		'mathit spacing: $\mathit{1 + 2 + a = 4}$',
 		'mathtt: $\mathtt{A^1 + B^2 + a^b = \alpha^\beta}$',
 		'mathbb: $\mathbb{A^1 + B^2 + a^b = \alpha^\beta}$',
 		'mathfrak: $\mathfrak{A^1 + B^2 + a^b = \alpha^\beta}$',
