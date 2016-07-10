@@ -411,13 +411,33 @@ sub next_chunk {
 		return { unicode => "$char$command" };
 	}
 	
-	# Digits
-	$to_return->{unicode}
-		= eval "\"\\N{$op{number_face} DIGIT $name_for_digit[$char]}\""
-			if '0' le $char and $char le '9';
+	# Digits. Italics make this really annoying.
+	if ('0' le $char and $char le '9') {
+		return generate_italic_digit_renderer($char)
+			if $op{number_face} eq 'MATHEMATICAL ITALIC';
+		$to_return->{unicode}
+			= eval "\"\\N{$op{number_face} DIGIT $name_for_digit[$char]}\"";
+	}
 	
 	# All done
 	return $to_return;
+}
+
+sub generate_italic_digit_renderer {
+	my $digit = shift;
+	return sub {
+		my ($widget, %op) = (shift, @_);
+		# Switch to italic font
+		$widget->font->style(fs::Italic);
+		# Render and measure
+		$widget->text_out($digit, $op{startx}, $op{starty}) 
+			if $op{is_drawing};
+		my $width = $widget->get_text_width($digit);
+		# Switch back
+		$widget->font->style(fs::Normal);
+		# Return widt
+		return ($width, 0, 0);
+	};
 }
 
 # Expects TeX input, via $_, to be reversed; uses chop for efficiency.
@@ -763,17 +783,17 @@ sub render_mathbb {
 sub render_mathfrak {
 	return measure_or_draw_TeX(@_,
 		letter_face => 'MATHEMATICAL FRAKTUR',
-		number_face => 'MATHEMATICAL FRAKTUR');
+		number_face => '');
 }
 sub render_mathcal {
 	return measure_or_draw_TeX(@_,
 		letter_face => 'MATHEMATICAL SCRIPT',
-		number_face => 'MATHEMATICAL SCRIPT');
+		number_face => '');
 }
 sub render_mathscr { # XXX NOTE IDENTICAL TO ABOVE; thanks Unicode
 	return measure_or_draw_TeX(@_,
 		letter_face => 'MATHEMATICAL SCRIPT',
-		number_face => 'MATHEMATICAL SCRIPT');
+		number_face => '');
 }
 
 ##############
