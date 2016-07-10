@@ -657,7 +657,7 @@ sub measure_or_draw_TeX {
 		$sub_length ||= 0;
 		$super_length ||= 0;
 		my $dx = $sub_length > $super_length ? $sub_length : $super_length;
-		$increment_lengths->($dx + $hair_space);
+		$increment_lengths->($dx);
 		
 		# Our last chop needs to be put back
 		$_ .= $char;
