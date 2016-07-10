@@ -365,6 +365,7 @@ sub next_chunk {
 	# Roman letters, which use the letter face
 	if ('A' le $char and $char le 'Z' or 'a' le $char and $char le 'z') {
 		my $full_name = "$op{letter_face} CAPITAL $char";
+		$full_name = "LATIN CAPITAL LETTER $char" unless $op{letter_face};
 		$full_name =~ s/CAPITAL/SMALL/ if $char ge 'a';
 		$to_return->{unicode}
 			= $substitutes{$full_name} || eval "\"\\N{$full_name}\"";

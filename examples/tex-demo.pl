@@ -72,6 +72,10 @@ $wDisplay->insert(ComboBox =>
 		'superscripts: $10^6 = 1 / 10^{-6}$',
 		'subscripts: $a_1 + b_{1} = c_{12}$',
 		'superscript spacing: $x^{-1}x + \sin^{-1} x + \sin x$',
+		# Font faces
+		'default math font: $A^1 + B^2 + a^b = \alpha^\beta$',
+		'mathrm: $\mathrm{A^1 + B^2 + a^b = \alpha^\beta}$',
+		'mathbf: $\mathbf{A^1 + B^2 + a^b = \alpha^\beta}$',
 		# Controlling spacing
 		'brace-enclosed operators: $a + b {+} c$',
 		'spacing and superscripts: $5\,000\,000 = 5\times10^6$',
