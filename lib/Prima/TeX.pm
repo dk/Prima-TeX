@@ -27,6 +27,10 @@ my $deg_to_rad = atan2(1, 1) / 45;
 sub TeX_out {
 	my ($widget, $text, $startx, $starty) = @_;
 	
+	# Switch to our TeX font, FreeSerif
+	my $font_backup = $widget->font->name;
+	$widget->font->name("FreeSerif");
+	
 	my %op = (
 		startx => $startx,
 		starty => $starty,
@@ -69,6 +73,9 @@ sub TeX_out {
 		}
 		$length += $dx;
 	}
+	
+	# Switch back to the original font
+	$widget->font->name($font_backup);
 	
 	# Always return the final width
 	return $length;
