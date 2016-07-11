@@ -912,7 +912,7 @@ sub render_frac {
 		measure_or_draw_TeX($widget, %op, startx => $x, starty => $y);
 		
 		# Render the denominator.
-		$vert_offset = -0.05 * $line_height;
+		$vert_offset = -0.08 * $line_height;
 		$x = $op{startx} - $vert_offset * $op{sin};
 		$y = $op{starty} + $vert_offset * $op{cos};
 		if ($lower_length < $upper_length) {
@@ -923,12 +923,18 @@ sub render_frac {
 		measure_or_draw_TeX($widget, %op, startx => $x, starty => $y);
 		
 		# Finish with the horizontal line
-		$vert_offset = 0.5 * $line_height;
+		$vert_offset = 0.45 * $line_height;
 		$x = $op{startx} - $vert_offset * $op{sin};
 		$y = $op{starty} + $vert_offset * $op{cos};
 		my $x2 = $x + $op{cos} * $bigger_length;
 		my $y2 = $y + $op{sin} * $bigger_length;
+		my $backup_width = $widget->lineWidth;
+		$widget->lineWidth($line_height / 15);
+		my $backup_end = $widget->lineEnd;
+		$widget->lineEnd(le::Flat);
 		$widget->line($x, $y, $x2, $y2);
+		$widget->lineWidth($backup_width);
+		$widget->lineEnd($backup_end);
 	}
 	
 	# Reset the font size and return the final computed length
