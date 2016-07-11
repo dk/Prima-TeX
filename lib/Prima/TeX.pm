@@ -213,6 +213,13 @@ $_->{can_be_unary} = 1 foreach (values %unary_ops);
 # Add descent for low ops
 $_->{descent} = $descent foreach values %low_ops;
 
+# These are given even more breathing room due to their importance:
+my %extra_space_ops = (
+	implies => "\N{LONG RIGHTWARDS DOUBLE ARROW}",
+);
+$_ = { lpad => $padding.$padding, rpad => $padding.$padding, unicode => $_ }
+	foreach (values %extra_space_ops);
+
 my %functions = map {
 	$_ => {
 		unicode => $_,
@@ -316,7 +323,7 @@ my %big_things = (
 $_ = { unicode => $_, superscript => 0.8, subscript => -0.2 }
 	foreach values %big_things;
 
-# Continue with https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols
+# Continue with http://milde.users.sourceforge.net/LUCR/Math/unimathsymbols.xhtml
 # for color, see http://tex.stackexchange.com/questions/21598/how-to-color-math-symbols
 # for spacing: https://www.sharelatex.com/learn/Spacing_in_math_mode
 
@@ -325,6 +332,7 @@ my %is_unisym = (
 	%normal_ops,
 	%low_ops,
 	%unary_ops,
+	%extra_space_ops,
 	%functions,
 	%greek,
 	%spacing,
