@@ -1,7 +1,6 @@
 use strict;
 use warnings;
-use Prima qw(Application ComboBox Label);
-use Prima::TeX;
+use Prima qw(Application ComboBox Label TeX);
 
 # We'll populate this below.
 my %explanations;
@@ -21,7 +20,7 @@ my $wDisplay = Prima::MainWindow->create(
 		$self->clear;
 		$self->font->size($font_size);
 		my $tex_to_show = $tex =~ s/^.*: //r;
-		Prima::TeX::TeX_out($self, $tex_to_show, 10, 50);
+		$self->TeX_out($tex_to_show, 10, 50);
 		$self->line(0, 50, $self->width, 50);
 		$self->line(0, 50 + $self->font->height, $self->width, 50 + $self->font->height);
 	}

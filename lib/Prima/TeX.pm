@@ -10,21 +10,25 @@ our $VERSION = 0.01;
 
 use Carp;
 
-######################################
-# Usage        : ????
-# Purpose      : ????
-# Arguments    : ????
-# Returns      : ????
-# Side Effects : none
-# Throws       : no exceptions
-# Comments     : none
-# See Also     : n/a
-
-# Assumes rendering if startx and starty are supplied; otherwise just
-# computes the length of the rendered string.
 my $deg_to_rad = atan2(1, 1) / 45;
 
-sub TeX_out {
+#######################################################################
+#                               TeX_out                               #
+#######################################################################
+# Usage        : $length = $widget->TeX_out('Solve $a^5 = 4$')
+#              : $widget->TeX_out('Solve $a^5 = 4$', 50, 60)
+# Purpose      : Measures length of mixed text and TeX math output,
+#              : rendering if x and y positions are provided
+# Arguments    : mixed text and TeX string; optional x and y coordinates
+# Returns      : Length of TeX string as rendered, or as it would be
+#              : rendered if no x/y starting position is provided
+# Side Effects : none
+# Throws       : no exceptions
+# Comments     : This function honors the font->direction property.
+#              : This is the user-facing function for Prima::TeX. Most
+#              : of the magic happens in measure_or_draw_TeX
+# See Also     : measure_or_draw_TeX
+sub Prima::Drawable::TeX_out {
 	my ($widget, $text, $startx, $starty) = @_;
 	
 	# Switch to our TeX font, FreeSerif
