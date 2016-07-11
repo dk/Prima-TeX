@@ -718,7 +718,7 @@ sub measure_or_draw_TeX {
 				}
 				my %sup_op = %op;
 				if ($op{is_drawing}) {
-					my $superscript_offset = 0.45 * $line_height;
+					my $superscript_offset = 0.35 * $line_height;
 					$sup_op{startx} -= $op{sin} * $superscript_offset;
 					$sup_op{starty} += $superscript_offset * $op{cos};
 				}
@@ -1042,6 +1042,54 @@ sub render_nicefrac {
 # square root is U+221a
 # Also, use get_text_box to get the upper right corner of the square-root?
 
+sub render_sqrt {
+	my ($widget, %op) = (shift, @_);
+	
+	# Strip leading whitespace
+	s/\s+$//;
+	
+	# Measure the contents of the redical. In particular, we are
+	# interested in the ascent, as this will dictate the size of our
+	# radical symbol.
+	my $backup_to_render = $_;
+	my ($inner_length, $ascent, $descent)
+		= measure_or_draw_TeX($widget, %op, is_drawing => 0);
+	$_ = $backup_to_render;
+	
+	# Render the radical
+	my $rad_height = $widget->font->height * 0.875;
+	my $rad_length = $widget->get_text_width("\N{SQUARE ROOT}");
+	my ($overline_startx, $overline_starty);
+	if ($op{is_drawing}) {
+		$widget->text_out("\N{SQUARE ROOT}", $op{startx}, $op{starty});
+		$overline_startx = $op{startx} + $op{cos} * $rad_length * 0.86;
+		$op{startx} += $op{cos}*$rad_length;
+		$overline_starty = $op{starty} + $op{sin} * $rad_length * 0.86;
+		$op{starty} += $op{sin}*$rad_length;
+	}
+	
+	# Render the interior contents
+	measure_or_draw_TeX($widget, %op);
+	
+	# Draw the overline
+	if ($op{is_drawing}) {
+		$inner_length += $rad_length * 0.15;
+		my $backup_width = $widget->lineWidth;
+		$widget->lineWidth($widget->font->height / 15);
+		my $backup_end = $widget->lineEnd;
+		$widget->lineEnd(le::Flat);
+		my $start_x = $overline_startx - $op{sin} * $rad_height;
+		my $start_y = $overline_starty + $op{cos} * $rad_height;
+		my $stop_x = $start_x + $inner_length*$op{cos};
+		my $stop_y = $start_y + $inner_length * $op{sin};
+		$widget->line($start_x, $start_y, $stop_x, $stop_y);
+		$widget->lineWidth($backup_width);
+		$widget->lineEnd($backup_end);
+	}
+	
+	return ($rad_length + $inner_length, $ascent, $descent);
+}
+
 1;
 
 =head1 NAME
@@ -1170,9 +1218,14 @@ be added!
 
 =head2 Special Rendering
 
-A number of macros require special rendering. The most notable of these
-is C<\frac>. Other macros that are planned but not yet implemented
-include C<\nicefrac>, and C<\sqrt>.
+A number of macros require special rendering. The most important is
+C<\frac>, and it is essentially fully implemented. The C<\sqrt> macro is
+another important macro, and it is partially implemented. At the moment,
+it does not pay attention to the ascent and descent of its interior, but
+that shoud be fixed. It also does not pay attention to any argument,
+i.e. the term in square brackets in C<\sqrt[3]{5}>, which would be the
+cube root of five. Another macro that is planned but not yet implemented
+is C<\nicefrac>.
 
 =head2 Minor Extensions
 

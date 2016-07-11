@@ -87,6 +87,10 @@ $wDisplay->insert(ComboBox =>
 		# Controlling spacing
 		'brace-enclosed operators: $a + b {+} c$',
 		'spacing and superscripts: $5\,000\,000 = 5\times10^6$',
+		
+		# Square roots
+		'square-roots: $\sqrt 5 + \sqrt{a^2} + \sqrt{5^3}$',
+		
 		'superscripts: $10^3$',
 		'brace handling: $10^foo$',
 		'greek and other symbols: $\sigma + \ell + 5$',
