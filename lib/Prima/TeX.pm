@@ -12,6 +12,8 @@ use Carp;
 
 my $deg_to_rad = atan2(1, 1) / 45;
 
+# XXX add FreeSerif from share directory if not found
+
 #######################################################################
 #                               TeX_out                               #
 #######################################################################
@@ -85,14 +87,37 @@ sub Prima::Drawable::TeX_out {
 	return $length;
 }
 
+#######################################################################
+#                           Property Tables                           #
+#######################################################################
+# What follows is an enormous collection of property tables. Most of
+# these are used to convert TeX commands to a sequence of unicode
+# glyphs together with a set of rendering properties. The rendering
+# properties include
+#  * the glyph's ascent and descent, used for superscript placement and
+#    overall height calculations,
+#  * left padding and right padding, which can be distinct (the comma,
+#    for example, has zero left padding but nonzero right padding),
+#  * expectation for an infix operator, and (separately) indication as
+#    to whether the current glyph could be a unary operator, which
+#    effects how the padding for potentially unary operators is handled
+# The ascent and descent information is particular to the FreeSerif font
+# though a number of properties  could conceivably be computed from the
+# font itself. Dmitry added the Prima::Drawable::get_font_def precisely
+# so I could use it to calculate glyph properties, so if I decide to
+# expand to fonts besides FreeSerif, that would be the tool to use.
+
 use charnames qw(:loose);
 my @name_for_digit = qw(ZERO ONE TWO THREE FOUR FIVE SIX SEVEN EIGHT NINE);
 
-my $low_ascent = -0.2;
-my $mild_ascent = -0.08;
-my $op_ascent = -0.1;
-my $descent = -0.1;
-my $padding = " ";
+my $low_ascent = -0.2;   # characters like a, e, and \alpha
+my $mild_ascent = -0.08; # the letter t
+my $op_ascent = -0.1;    # ascent for all operators
+my $descent = -0.1;      # for characters that have tails. The letter "f"
+                         # is a funny case, and not always handled
+                         # correctly. For now, it is always assumed to
+                         # have a descent.
+my $padding = " ";       # default padding around operators, etc
 
 my %ascent_for = (
 	(map { $_ => $low_ascent  } qw( a c e g m n o p q r s u v w x y z ) ),
@@ -220,6 +245,9 @@ my %extra_space_ops = (
 $_ = { lpad => $padding.$padding, rpad => $padding.$padding, unicode => $_ }
 	foreach (values %extra_space_ops);
 
+# These are rendered as upright Roman, i.e. normal ASCII, with a bit of
+# breathing room on the right. These are insensitive to font faces like
+# mathit and mathbf:
 my %functions = map {
 	$_ => {
 		unicode => $_,
@@ -366,6 +394,31 @@ my %substitutes = (
 	
 );
 
+########################################################################
+#                              next_chunk                              #
+########################################################################
+# Usage        : $chunk = next_chunk($widget, %ops)
+# Purpose      : Nibbles on $_ until it has a single renderable chunk.
+#              : Such a chunk is typically either a single letter or
+#              : number, or it is a macro. Macros that require special
+#              : handling return subrefs, and those that can be mapped
+#              : directly to a sequence of unicode characters (such as
+#              : \sin) are returned directly.
+# Arguments    : $widget, which is only consulted for special-cased 
+#              :          macro rendering
+#              : %ops, a key/value pair of options. Only 'letter_face'
+#              :       and 'number_face' are consulted
+# Returns      : undef if whitespace until the end (beginning) of $_
+#              : hashref of above properties if simple chunk; includes
+#              :    keys unicode, and next_op_infix, among others
+#              : subref if a more complex rendering process is necessary
+# Side Effects : nibbles on the end of $_
+# Throws       : no exceptions, though it warns about stray backslashes
+# Comments     : This function can be thought of as the lexer for
+#              : Prima::TeX. From a stream of bytes, it returns
+#              : actionable object things. The actual measuring and
+#              : rendering, however, is handled elsewhere.
+# See Also     : measure_or_draw_TeX
 sub next_chunk {
 	my ($widget, %op) = (shift, @_);
 	my $char = chop;
@@ -442,25 +495,31 @@ sub next_chunk {
 	return $to_return;
 }
 
-sub generate_italic_digit_renderer {
-	my $digit = shift;
-	return sub {
-		my ($widget, %op) = (shift, @_);
-		# Switch to italic font
-		$widget->font->style(fs::Italic);
-		# Render and measure
-		$widget->text_out($digit, $op{startx}, $op{starty}) 
-			if $op{is_drawing};
-		my $width = $widget->get_text_width($digit);
-		# Switch back
-		$widget->font->style(fs::Normal);
-		# Return width, ignore ascent and descent, and this expects
-		# infix
-		return ($width, 0, 0, 1);
-	};
-}
-
-# Expects TeX input, via $_, to be reversed; uses chop for efficiency.
+#######################################################################
+#                         measure_or_draw_TeX                         #
+#######################################################################
+# Usage        : ($width, $ascent, $descent)
+#              :     = measure_or_draw_TeX($widget, %ops)
+# Purpose      : Renders or measures the TeX in $_ using the provided
+#              : widget and key/value options.
+# Arguments    : $widget, which is used for measuring and rendering;
+#              :       next_chunk also consults it for rendering subrefs
+#              : %ops, a key/value pair of options including optional
+#              :       letter_face, number_face, and end_chunk. If
+#              :       is_drawing is a key with a true value, then other
+#              :       required keys are startx, starty, cos, sin.
+# Returns      : length of the TeX math, in pixels
+#              : ascent as a fraction of the line height
+#              : descent as a fraction of the line height
+#              : whether the next operator can be an infix operator
+# Side Effects : nibbles on the end of $_
+# Throws       : no exceptions, though it warns about consecutive
+#              : superscripts and subscripts
+# Comments     : Expects TeX input, via $_, to be reversed
+#              : uses chop for efficiency
+# See Also     : next_chunk; TeX_out
+# XXX          : This should probably refactored into a collection of
+#              : smaller functions
 sub measure_or_draw_TeX {
 	my ($widget, %op) = (shift, 
 		letter_face  => 'MATHEMATICAL ITALIC',
@@ -790,6 +849,28 @@ sub render_mathit {
 		letter_face => 'MATHEMATICAL ITALIC',
 		number_face => 'MATHEMATICAL ITALIC');
 }
+# Whenever a number face of MATHEMATICAL ITALIC is detected in
+# cunjunction with a digit, next_chunk returns a subref generated by
+# this function, rather than producing a unicode character (because
+# unicode does not have MATHEMATICAL ITALIC digits):
+sub generate_italic_digit_renderer {
+	my $digit = shift;
+	return sub {
+		my ($widget, %op) = (shift, @_);
+		# Switch to italic font
+		$widget->font->style(fs::Italic);
+		# Render and measure
+		$widget->text_out($digit, $op{startx}, $op{starty}) 
+			if $op{is_drawing};
+		my $width = $widget->get_text_width($digit);
+		# Switch back
+		$widget->font->style(fs::Normal);
+		# Return width, ignore ascent and descent, and this expects
+		# infix
+		return ($width, 0, 0, 1);
+	};
+}
+
 sub render_mathtt {
 	return measure_or_draw_TeX(@_,
 		letter_face => 'MATHEMATICAL MONOSPACE',
@@ -959,227 +1040,7 @@ sub render_nicefrac {
 }
 # For square root, consider HORIZONTAL SCAN LINE 1, U+23ba
 # square root is U+221a
-# Also, use get_text_box to get the upper right corner of the square-root
-
-1;
-__END__
-sub old_TeX_out {
-	my ($widget, $text, $startx, $starty) = @_;
-	my $angle = $widget->font->direction * $deg_to_rad;
-	
-	my $length = 0;
-	my $is_drawing = defined $starty;
-	
-	while (length ($text) > 0) {
-		# If it starts with something that looks like tex...
-		if ($text =~ s/^\$([^\$]*\$)//) {
-			my $reverse_tex = reverse process_escaped_characters($1);
-			# Set an italic font
-			my $prev_font_style = $widget->font->style;
-			$widget->font->style(fs::Italic);
-			# Render and/or measure the tex
-			my $dx = measure_or_draw_TeX($widget, $reverse_tex, '$', $startx, $starty);
-			$length += $dx;
-			if ($is_drawing) {
-				$startx += cos($angle) * $dx;
-				$starty += sin($angle) * $dx;
-			}
-			# Restore the font style
-			$widget->font->style($prev_font_style);
-		}
-		# Pull off non-tex text
-		$text =~ s/^([^\$]*)//;
-		my $not_tex = $1;
-		next if length($not_tex) == 0;
-		my $dx = $widget->get_text_width($not_tex);
-		if ($is_drawing) {
-			$widget->text_out($not_tex, $startx, $starty);
-			$startx += cos($angle) * $dx;
-			$starty += sin($angle) * $dx;
-		}
-		$length += $dx;
-	}
-	
-	# Always return the final width
-	return $length;
-}
-
-# Assumes that the widget's font is already set up for this text, and
-# that the tex string has been reversed, which means we can slowly eat
-# characters off the end using chop. To determine if we are rendering or
-# just measuring, check the definedness of starty. We chop directly off
-# of the second argument, $_[1], so that our parser can "eat" characters
-# that it has parsed.
-sub old_measure_or_draw_TeX {
-	my ($widget, $end_char, $startx, $starty) = @_;
-	my $is_drawing = defined $starty;
-	my $length = 0;
-	my $angle = $widget->font->direction * $deg_to_rad;
-	
-	# Ignore whitespace
-	my $char = chop $_[1];
-	$char = chop $_[1] while $char eq ' ';
-	
-	# If no end char given, then we check the first character to see if
-	# it's an opening brace.
-	if ($end_char eq '') {
-		if ($char eq '{') {
-			# Assign closing brace as our end char
-			$end_char = '}';
-			$char = chop $_[1];
-		}
-		else {
-			# No two super/subscripts in a row
-			if ($char eq '_' or $char eq '^') {
-				my $original = reverse($_[1]);
-				croak("Cannot have two superscripts or subscripts in a "
-					."row (at $char$original)");
-			}
-			# render a single-character
-			$widget->font->style(fs::Normal) if $not_italic{$char};
-			$widget->text_out($char, $startx, $starty) if $is_drawing;
-			my $dx = $widget->get_text_width($char);
-			$widget->font->style(fs::Italic);
-			return $dx;
-		}
-	}
-	
-	# Parse until we find the end char
-	while (length($_[1]) > 0) {
-		my $is_currently_italic = 1 - ($not_italic{$char} || 0);
-		# Pull out stuff to render directly
-		my $direct_render = '';
-		while (length($_[1]) > 0 and $char !~ /[\^_\{$end_char]/) {
-			my $char_is_italic = 1 - ($not_italic{$char} || 0);
-			last if $char_is_italic != $is_currently_italic;
-			$direct_render .= $char if $char ne ' ';
-			$char = chop $_[1];
-		}
-		if (length($direct_render) > 0) {
-			$widget->font->style(fs::Normal) unless $is_currently_italic;
-			my $dx = $widget->get_text_width($direct_render);
-			if ($is_drawing) {
-				$widget->text_out($direct_render, $startx, $starty);
-				$startx += cos($angle) * $dx;
-				$starty += sin($angle) * $dx;
-			}
-			$widget->font->style(fs::Italic) unless $is_currently_italic;
-			$length += $dx;
-		}
-		
-		# What we do next depends on the character just popped off. If
-		# we found the expected end character, we're done
-		return $length if $char eq $end_char;
-		
-		# Handle superscripts and subscripts next
-		my ($sub_length, $super_length);
-		while ($char eq '^' or $char eq '_') {
-			my $original_font_size = $widget->font->size;
-			my $line_height = $widget->font->height;
-			$widget->font->size($original_font_size * 2 / 3);
-			if ($char eq '^') {
-				if (defined $super_length) {
-					my $original = reverse($_[1]);
-					croak("Cannot have two superscripts or subscripts in a "
-						."row (at $char$original)");
-				}
-				my ($x, $y);
-				if ($is_drawing) {
-					my $superscript_offset = 0.5 * $line_height;
-					$x = $startx - sin($angle) * $superscript_offset;
-					$y = $starty + $superscript_offset * cos($angle);
-				}
-				$super_length = measure_or_draw_TeX($widget, '', $x, $y);
-			}
-			elsif ($char eq '_') {
-				if (defined $sub_length) {
-					my $original = reverse($_[1]);
-					croak("Cannot have two superscripts or subscripts in a "
-						."row (at $char$original)");
-				}
-				my ($x, $y);
-				if ($is_drawing) {
-					my $subscript_offset = -0.25 * $line_height;
-					$x = $startx - sin($angle) * $subscript_offset;
-					$y = $starty + $subscript_offset * cos($angle);
-				}
-				$sub_length = measure_or_draw_TeX($widget, '', $x, $y);
-			}
-			$widget->font->size($original_font_size);
-			# Eat whitespace
-			$char = chop $_[1];
-			$char = chop $_[1] while $char eq ' ';
-		}
-		# dx is the longer of the two distances
-		$sub_length ||= 0;
-		$super_length ||= 0;
-		my $dx = $sub_length > $super_length ? $sub_length : $super_length;
-		# Update the length and starting positions
-		$length += $dx;
-		if ($is_drawing) {
-			$startx += cos($angle) * $dx;
-			$starty += sin($angle) * $dx;
-		}
-	}
-	return $length if $char eq $end_char;
-	croak("Encountered unexpected end of tex string");
-}
-
-my %codepoint_for = (
-	# Greek
-	alpha => "\x{3B1}",
-	beta => "\x{3B2}",
-	Gamma => "\x{393}",
-	gamma => "\x{3B3}",
-	Delta => "\x{394}",
-	delta => "\x{3B4}",
-	epsilon => "\x{3B5}",
-	zeta => "\x{3B6}",
-	eta => "\x{3B7}",
-	Theta => "\x{398}",
-	theta => "\x{3B8}",
-	vartheta => "\x{3D1}",
-	iota => "\x{3B9}",
-	kappa => "\x{3BA}",
-	Lambda => "\x{39B}",
-	lambda => "\x{3BB}",
-	mu => "\x{3BC}",
-	nu => "\x{3BD}",
-	Xi => "\x{39E}",
-	xi => "\x{3BE}",
-	Pi => "\x{3A0}",
-	pi => "\x{3C0}",
-	rho => "\x{3C1}",
-	Sigma => "\x{3A3}",
-	sigma => "\x{3C3}",
-	varsigma => "\x{3C2}",
-	tau => "\x{3C4}",
-	upsilon => "\x{3C5}",
-	Phi => "\x{3A6}",
-	phi => "\x{3D5}",
-	varphi => "\x{3C6}",
-	chi => "\x{3C7}",
-	Psi => "\x{3A8}",
-	psi => "\x{3C8}",
-	Omega => "\x{3A9}",
-	omega => "\x{3C9}",
-	
-	ell => "\x{2113}",
-	times => "\N{MULTIPLICATION SIGN}",
-	gt => '>',
-	lt => '<',
-	
-);
-
-sub process_escaped_characters {
-	my $tex = shift;
-	# Replaces common tex characters that have corresponding unicode
-	# code points
-	
-	$tex =~ s{\\([a-zA-Z]+)}{ $codepoint_for{$1} || "\\$1" }eg;
-	
-	return $tex;
-}
+# Also, use get_text_box to get the upper right corner of the square-root?
 
 1;
 
@@ -1187,120 +1048,131 @@ sub process_escaped_characters {
 
 Prima::TeX - adding TeX equation rendering to Prima
 
-=head1 NOTES
+=head1 SYNOPSIS
 
-Prima comes with the F<fontdlg.pl> script in the F<examples> directory,
-making it easy to explore the various font faces on a machine. On my
-Linux machine, there appear to be four basic approaches that a font
-uses for typesetting mathematics:
+ use Prima qw(Application TeX);
+ Prima::MainWindow->create(
+     text => 'TeX Demo',
+     size => [500, 200],
+     onPaint => sub {
+         my $self = shift;
+         $self->clear;
+         # Simple equation
+         $self->TeX_out('$a + b = c$', 10, 50);
+         # More complex equation:
+         $self->TeX_out('$\int_0^{10} x^2 dx = \frac{1000}{3}$', 10, 100);
+     }
+ );
+ Prima->run;
 
-=over
+=head1 DESCRIPTION
 
-=item No Typesetting
+This module provides a method for L<Prima::Drawable> and its descendents
+to render TeX mathematics. Currently it only supports inline formulas,
+though I hope to add displayed formulas eventually.
 
-Many fonts only provide latin and greek letters. They might provide some
-operators, but their coverage is far from complete. This happens with
-surprising regularity for system fonts, which seem to focus on providing
-wider support for arabic, hindi, etc. C<Bitstream Charter> is the worst,
-failing to provide even greek letters. C<Century Schoolbook L> provides
-cyrillic characters, but no greek ones. C<Arial> provides full coverage
-of greek, at least.
+The philosophy behind this module is that
+L<Donald Knuth's TeX|https://en.wikipedia.org/wiki/TeX> provides an
+excellent domain-specific language for describing mathematics. This
+module merely implements this domain-specific lanague using the
+facilities of Prima. It is not a full TeX rendering engine. However, I
+do try awfully hard to get it to match the behavior of TeX as closely
+as I can reasonably manage.
 
-=item Basic Unicode Support
+The primary method, C<Prima::Drawable::TeX_out>, can be used to render
+TeX equations and/or to measure the width of such equations. For now, it
+always uses the FreeSerif font for typesetting.
 
-Unicode codepoints exist for all latin and greek letters as well as the
-important mathematics operators. This is the case for C<DroidSerif>
+=head2 Basics
 
-=item Wide Unicode Support
+The contents of any mathematics that you want typeset should be
+wrapped in a pair of dollar signs, i.e. 
 
-Unicode codepoints exist for all latin and greek letters, important
-mathematics operators, and some "math typesetting" characters.
-C<DejaVu Serif> falls into this category. For example, it does not
-include fraktur settings of the latin alphabet.
+ $widget->TeX_out('$1+ 10 =11$', 10, 120);
 
-=item Complete Unicode Support, not Prima accessible
+Whitespace is ignored, and the spacing between the glyphs depends upon
+the mathematical context. For example, there is no appreciable space
+between the digits of the numbers 10 and 11, but there will be space
+between all of the operators and the numbers. Be default, Roman letters
+are italic and numbers are not.
 
-A few font faces provide complete unicode coverage (described below) but
-somehow provide bad data to Prima, so Prima has incorrect notions about
-line height. This is the case for C<Latin Modern Math> and the "Math"
-subfonts under C<TeX Gyre>. For example, C<TeX Gyre Schola> has a
-corresponding C<TeX Gyre Schola Math>; Prima obtains correct font metrics
-from the former but not the latter. I suspect that a work-around for the
-"Math" subfonts could be devised in which the non-math font is queried
-for information like internal leading.
+=head2 Font Faces
 
-=item Complete Unicode Support
+You can change the font face of your Roman letters and numbers with the
+font face macros C<\mathrm>, C<\mathbf>, C<\boldsymbol>, C<\mathsf>,
+C<\mathit>, C<\mathtt>, C<\mathbb>, C<\mathfrak>, C<\mathcal>, and
+C<\mathscr>. Note, however, that the last two produce identical results
+because Unicode (essentially) does not provide C<\mathscr>.
 
-All useful Unicode codepoints exist, including those typically associated
-with changes in font syling, such as C<MATHEMATICAL SMALL ITALIC F>.
-These include characters for script fonts, double-struck, fraktur,
-san-serif, even monospace. C<FreeSerif> is one of the few that appears
-to have complete coverage.
+=head2 Superscripts and Subscripts
 
-=item Multiple Fonts within a Family
+Prima::TeX recognizes superscripts and subscripts:
 
-Some collections of fonts restrict their tables to only contain a small
-number (128?) of entries. Between various fonts in the family, they
-provide coverage of all math symbols and font faces. The C<MathJax_...>
-fonts are one such example; these use Unicode code-points for greek
-symbols and mathematical operators, but provide double-struck, fraktur,
-and other font faces using multiple fonts, and the ASCII codepoints. In
-contrast, the C<...10> fonts such as C<cmex10>, C<cmmi10>, C<msbm10>,
-etc, use a font-specific encoding that is not compatible with utf-8.
+ $widget->TeX_out('$a^2_b = c^{1+1}$', 10, 120);
 
-=back
+You do not need to wrap superscripts or subscripts in curly brackets
+unless you want multiple characters to be rendered in the superscript or
+subscript. When both a superscript and subscript are applied to
+something, they are both rendered left justified. This differs from how
+HTML renders superscripts and subscripts, but is consistent with TeX.
 
-Obviously, I have lots of possible approaches. The simples option is to
-require the user to indicate a font with complete unicode support. In
-fact, I could create an Alien package for FreeSerif and simply rely on
-that package for TeX typesetting. For now, I will simply rely on full
-unicode support (i.e. FreeSerif) and add other capabilities, such as
-changing the font style, if I decide it's worth doing.
+=head2 Common Recognized Macros
 
-=head2 Recognized Macros
-
-Prima::TeX recognizes macros for:
+Prima::TeX recognizes many common TeX macros. Many of these are simply
+mapped to corresponding Unicode characters, but some of these involve
+special rendering. Macros that are simply expanded as unicode strings
+include:
 
 =over
 
 =item Greek
 
-All Greek letters are recognized and rendered using Unicode.
+All Greek letters recognized by TeX are rendered using Unicode. As with
+TeX's functionality, the font face for these characters ignores the
+font face of the surrounding scope.
 
-=item Mathematical Comparsions
+=item Named Functions
 
-The mathematical comparisons, including C<\le>, C<\neq>, C<\equiv>, etc.
+Named functions, such as C<\sin> and C<\cos>, are recognized and
+rendered using upright Roman regardless of the current font face. The
+collection of recognized named functions includes C<\arccos>,
+C<\arcsin>, C<\arctan>, C<\arg>, C<\bmod>, C<\cos>, C<\cosh>, C<\cot>,
+C<\coth>, C<\csc>, C<\deg>, C<\det>, C<\dim>, C<\exp>, C<\gcd>, C<\hom>,
+C<\inf>, C<\ker>, C<\lg>, C<\lim>, C<\liminf>, C<\limsup>, C<\ln>,
+C<\log>, C<\max>, C<\min>, C<\sec>, C<\sin>, C<\sinh>, C<\sup>, C<\tan>,
+C<\tanh>, and C<\Pr>.
 
+=item Mathematical Operators
+
+Many mathematical operators, including C<\pm>, C<\le>, C<\neq>,
+C<\equiv>, and C<\to> (to name just a few) are recognized and mapped.
+There are an B<enormous> number of operators and I simply have not had
+time to add all of them. Patches welcome!
+
+=item Special Symbols
+
+A number of special symbols are recognized, including C<\nabla>,
+C<\partial>, C<\Re>, C<\Im>, C<\imath>, C<\jmath>, C<\ell>, C<\hbar>,
+and C<\infty>.
+
+=item Big Symbols
+
+Both C<\int> and C<\sum> are mapped to unicode characters, and special
+consideration for superscript and subscript placement is in place.
 
 =back
 
-the Greek letters. It also recognizes
+=head2 Decorators
 
- \times    multiplication symbol
+A subset of the decorator macros are recognized, including C<vec>,
+C<ddot>, C<dot>, C<hat>, C<tilde>, and C<bar>. Certainly more need to
+be added!
 
- \gt, \lt  greater and less than symbols
- \ge, \le  
- lt, gt, 
-	to => "\N{THIN SPACE}\N{RIGHTWARDS ARROW}\N{THIN SPACE}",
-	times => "\N{MULTIPLICATION SIGN}",
-	gt => "\N{THIN SPACE}>\N{THIN SPACE}",
-	lt => "\N{THIN SPACE}<\N{THIN SPACE}",
-	nabla => "\N{NABLA}",
-	ell => "\N{SCRIPT SMALL L}",
-	hbar => "\N{PLANCK CONSTANT OVER TWO PI}",
-	pm => "\N{THIN SPACE}\N{PLUS-MINUS SIGN}\N{THIN SPACE}",
-	sin => "sin",
-	cos => "cos",
-	tan => "tan",
-	infty => "\N{INFINITY}",
-	sum => "\N{N-ARY SUMMATION}",
-	int => "\N{INTEGRAL}",
-	quad => "\N{EN QUAD}",
-	qquad => "\N{EM QUAD}",
-	Re => "\N{BLACK-LETTER CAPITAL R}",
-	Im => "\N{BLACK-LETTER CAPITAL I}",
-	imath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS I}",
-	jmath => "\N{MATHEMATICAL ITALIC SMALL DOTLESS J}",
+=head2 Special Rendering
+
+A number of macros require special rendering. The most notable of these
+is C<\frac>. Other macros that are planned but not yet implemented
+include C<\nicefrac>, and C<\sqrt>.
 
 =head2 Minor Extensions
 
