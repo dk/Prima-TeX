@@ -917,8 +917,8 @@ sub render_frac {
 		$y = $op{starty} + $vert_offset * $op{cos};
 		if ($lower_length < $upper_length) {
 			my $dx = ($upper_length - $lower_length) / 2;
-			$x -= $op{cos} * $dx;
-			$y -= $op{sin} * $dx;
+			$x += $op{cos} * $dx;
+			$y += $op{sin} * $dx;
 		}
 		measure_or_draw_TeX($widget, %op, startx => $x, starty => $y);
 		
