@@ -1038,15 +1038,14 @@ sub render_nicefrac {
 	# BIG SOLIDUS U+29f8
 	# or FRACTION SLASH U+2044
 }
-# For square root, consider HORIZONTAL SCAN LINE 1, U+23ba
-# square root is U+221a
-# Also, use get_text_box to get the upper right corner of the square-root?
-
 sub render_sqrt {
 	my ($widget, %op) = (shift, @_);
 	
 	# Strip leading whitespace
 	s/\s+$//;
+	
+	# Set width and height factors, specific to font size
+	my ($height_factor, $width_factor);
 	
 	# Measure the contents of the redical. In particular, we are
 	# interested in the ascent, as this will dictate the size of our
@@ -1057,14 +1056,22 @@ sub render_sqrt {
 	$_ = $backup_to_render;
 	
 	# Render the radical
-	my $rad_height = $widget->font->height * 0.875;
 	my $rad_length = $widget->get_text_width("\N{SQUARE ROOT}");
 	my ($overline_startx, $overline_starty);
 	if ($op{is_drawing}) {
+		my $font_size = $widget->font->size;
+		($height_factor, $width_factor)
+			= $font_size > 113 ? (1.215, 0.86)
+			: $font_size > 49 ? (1.23, 0.87)
+			: $font_size > 22 ? (1.24, 0.9)
+			: $font_size == 6 ? (1.3, 0.9)
+			: (1.29, 0.9);
 		$widget->text_out("\N{SQUARE ROOT}", $op{startx}, $op{starty});
-		$overline_startx = $op{startx} + $op{cos} * $rad_length * 0.86;
+		$overline_startx = sprintf('%d', $op{startx}
+			+ $op{cos} * $rad_length * $width_factor);
 		$op{startx} += $op{cos}*$rad_length;
-		$overline_starty = $op{starty} + $op{sin} * $rad_length * 0.86;
+		$overline_starty = sprintf('%d', $op{starty}
+			+ $op{sin} * $rad_length * $width_factor);
 		$op{starty} += $op{sin}*$rad_length;
 	}
 	
@@ -1073,18 +1080,17 @@ sub render_sqrt {
 	
 	# Draw the overline
 	if ($op{is_drawing}) {
-		$inner_length += $rad_length * 0.15;
-		my $backup_width = $widget->lineWidth;
-		$widget->lineWidth($widget->font->height / 15);
-		my $backup_end = $widget->lineEnd;
-		$widget->lineEnd(le::Flat);
-		my $start_x = $overline_startx - $op{sin} * $rad_height;
-		my $start_y = $overline_starty + $op{cos} * $rad_height;
-		my $stop_x = $start_x + $inner_length*$op{cos};
-		my $stop_y = $start_y + $inner_length * $op{sin};
-		$widget->line($start_x, $start_y, $stop_x, $stop_y);
-		$widget->lineWidth($backup_width);
-		$widget->lineEnd($backup_end);
+		# Change the font height so the scanline hits the top of the
+		# square-root symbol
+		my $backup_height = $widget->font->height;
+		$widget->font->height($backup_height * $height_factor);
+		# Make the width the same as the inner length
+		$widget->font->width($inner_length*0.675 + $rad_length * 0.1);
+		# Draw the (anti-aliased) line
+		$widget->text_out("\N{HORIZONTAL SCAN LINE-1}", $overline_startx,
+			$overline_starty);
+		# Reset height; automatically resets width, too
+		$widget->font->height($backup_height);
 	}
 	
 	return ($rad_length + $inner_length, $ascent, $descent);
