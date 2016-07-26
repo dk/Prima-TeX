@@ -352,7 +352,6 @@ $_ = { unicode => $_, superscript => 0.8, subscript => -0.2 }
 	foreach values %big_things;
 
 # Continue with http://milde.users.sourceforge.net/LUCR/Math/unimathsymbols.xhtml
-# for color, see http://tex.stackexchange.com/questions/21598/how-to-color-math-symbols
 # for spacing: https://www.sharelatex.com/learn/Spacing_in_math_mode
 
 # TeX macros that get mapped to simple Unicode sequences
@@ -1114,6 +1113,8 @@ sub render_sqrt {
 # Colors #
 ##########
 
+# See https://github.com/Inventium/latexcolor.com/blob/master/colors.txt
+# Probably all of these should go in a separate module.
 my %color_for = (
 	red => cl::Red,
 );
