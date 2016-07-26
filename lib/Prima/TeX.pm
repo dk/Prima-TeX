@@ -1110,6 +1110,32 @@ sub render_sqrt {
 	return ($rad_length + $inner_length, $ascent, $descent);
 }
 
+##########
+# Colors #
+##########
+
+my %color_for = (
+	red => cl::Red,
+);
+
+sub render_color {
+	my ($widget, %op) = (shift, @_);
+	
+	# Get the color name
+	if (s/\}(\w+)\{//) {
+		my $color = reverse $1;
+		# Create the hook to restore the old color
+		my $old_color = $widget->color;
+		my $hook = sub { $widget->color($old_color) };
+		# Set the new color and return
+		$widget->color($color_for{$color});
+		return (undef, undef, undef, undef, $hook);
+	}
+	
+	warn("Unable to parse color command; skipping\n");
+	return;
+}
+
 1;
 
 =head1 NAME

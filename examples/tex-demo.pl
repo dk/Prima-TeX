@@ -91,6 +91,9 @@ $wDisplay->insert(ComboBox =>
 		# Square roots
 		'square-roots: $\sqrt 5 + \sqrt{a^2} + \sqrt{5^3}$',
 		
+		# Color
+		'color: $5 + \color{red}4 = 9$',
+		
 		'superscripts: $10^3$',
 		'brace handling: $10^foo$',
 		'greek and other symbols: $\sigma + \ell + 5$',
