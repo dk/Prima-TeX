@@ -576,12 +576,12 @@ sub measure_or_draw_TeX {
 	# measuring. So, we wrap all of that into subrefs.
 	my $increment_lengths = $op{is_drawing}
 		? sub {
-			my $dx = shift;
+			my $dx = shift || 0;
 			$op{startx} += $op{cos} * $dx;
 			$op{starty} += $op{sin} * $dx;
 			$length += $dx;
 		}
-		: sub { $length += shift };
+		: sub { $length += shift || 0 };
 	
 	# We also need to track ascent and descent. I use this functionality
 	# at least twice:
@@ -609,6 +609,12 @@ sub measure_or_draw_TeX {
 	# unary operator, or as an infix operator. We start off expecting
 	# unary.
 	my $next_op_infix = 0;
+	
+	# Some commands alter the rendering behavior until the end of the
+	# current block. Such commands are responsible for supplying a hook
+	# to execute at the end of the block to return the renderer to
+	# normal.
+	my @scope_hooks;
 	
 	# Parse until we find the end chunk
 	my $prev_length = 1 + length;
@@ -678,16 +684,23 @@ sub measure_or_draw_TeX {
 				if $rpad;
 			$rpad = '';
 			# execute subref
-			my ($dx, $asc, $desc, $infix) = $next_step->($widget, %op);
+			my ($dx, $asc, $desc, $infix, $scope_hook)
+				= $next_step->($widget, %op);
 			# update things we're tracking
 			$increment_lengths->($dx);
 			$update_ascent_descent->($asc, $desc);
 			$infix ||= '';
 			$next_op_infix = $infix unless $infix eq 'copy';
+			# Add the scope hook, if supplied
+			unshift @scope_hooks, $scope_hook
+				if ref($scope_hook) and ref($scope_hook) eq ref(sub{});
 		}
 		
 		# If we found the expected end chunk, we're done.
-		return ($length, $ascent, $descent, $next_op_infix) if $next_step eq 'done';
+		if ($next_step eq 'done') {
+			$_->() foreach @scope_hooks;
+			return ($length, $ascent, $descent, $next_op_infix);
+		}
 		
 		# Start again from the top unless we're working with subscripts
 		# or superscripts
@@ -761,6 +774,7 @@ sub measure_or_draw_TeX {
 		# Our last chop needs to be put back
 		$_ .= $char;
 	}
+	$_->() foreach @scope_hooks;
 	return ($length, $ascent, $descent);
 }
 
